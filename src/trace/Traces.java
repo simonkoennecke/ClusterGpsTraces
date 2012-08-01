@@ -9,7 +9,7 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 	private Point maxPt;
 	private Point minPt;
 	
-	Traces(){
+	public Traces(){
 		
 	}
 	
