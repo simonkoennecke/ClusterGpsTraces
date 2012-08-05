@@ -298,4 +298,9 @@ public class KMeans implements ClusterTraces {
 		}
 		
 	}
+
+	@Override
+	public Cluster getCluster() {
+		return cluster;
+	}
 }

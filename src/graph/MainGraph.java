@@ -1,5 +1,6 @@
 package graph;
 
+import cluster.Cluster;
 import processing.core.*;
 import trace.*;
 
@@ -66,7 +67,9 @@ public class MainGraph extends PApplet {
 		Double y = (pt.getY()-minPt.getY()) * yFactor;
 		return y.floatValue()+(windowBorder/2);
 	}
-	
+	public void drawCluster(Cluster c){
+		new DrawCluster(this, c).draw();
+	}
 	public void draw() {
 		background(255);
 		new DrawTraces(this, gpx).draw();

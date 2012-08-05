@@ -1,6 +1,9 @@
 package cluster;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import trace.Trace;
@@ -26,6 +29,10 @@ public class Cluster implements Iterable<Traces>{
 	public Traces get(Integer clusterId){
 		return cluster.get(clusterId);
 	}
-	
-	
+	@Override
+	public Iterator<Traces> iterator() {
+		Collection c = cluster.values();
+	    Iterator itr = c.iterator();
+		return itr;
+	}
 }

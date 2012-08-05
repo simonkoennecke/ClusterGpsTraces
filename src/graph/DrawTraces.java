@@ -18,6 +18,10 @@ public class DrawTraces {
 		this.g = g;
 		lineColor = g.color(0,0,0);
 	}
+	public DrawTraces(MainGraph g){
+		this.g = g;
+		lineColor = g.color(0,0,0);
+	}
 	private void drawArrow(Point p1, Point p2){
 		g.stroke(lineColor);
 		g.line(g.lon(p1), g.lat(p1), g.lon(p2), g.lat(p2));
