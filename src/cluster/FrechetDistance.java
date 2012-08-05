@@ -20,19 +20,21 @@ public class FrechetDistance implements TraceCompare{
 	
 	@Override
 	public Double compareTo(Trace t1, Trace t2) {
-		Point2D[] q = new Point2D[t1.size()];
+		//Transformiere Polylinien Kodierung in die hier genutzte
+		Point2D[] p = new Point2D[t1.size()];
+		Point2D[] q = new Point2D[t2.size()];
+		
 		int i = 0;
         for(Point pt: t1){
-        	q[i] = new Point2D.Double(pt.getLon(), pt.getLat());
-        	i++;
-        }
-        Point2D[] p = new Point2D[t1.size()];
-		i = 0;
-        for(Point pt: t2){
         	p[i] = new Point2D.Double(pt.getLon(), pt.getLat());
         	i++;
         }
-        initFrechetDistance(p,q);
+		i = 0;
+		for(Point pt: t2){
+        	q[i] = new Point2D.Double(pt.getLon(), pt.getLat());
+        	i++;
+        }
+		initFrechetDistance(p,q);
          
 		return computeFrechetDistance();
 	}
@@ -203,10 +205,15 @@ public class FrechetDistance implements TraceCompare{
 //							System.out.println("tempCircle center:"+tempCircle.getCentroid());
 //							System.out.println("tempCircle extent: "+tempCircle.toText());
 //							System.out.println(tempGeom.toString());
-							Coordinate[] intersections = ((LineString) tempGeom)
-									.getCoordinates();
-							c[i][j] = getProportion(intersections[0], tempLsP);
-							d[i][j] = getProportion(intersections[1], tempLsP);
+							//TODO: hier gibt es ein problem
+							try{
+								Coordinate[] intersections = ((LineString) tempGeom).getCoordinates();
+								c[i][j] = getProportion(intersections[0], tempLsP);
+								d[i][j] = getProportion(intersections[1], tempLsP);
+							}
+							catch(ClassCastException e){
+								return false;
+							}
 						}
 					}
 				}

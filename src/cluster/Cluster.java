@@ -6,24 +6,26 @@ import java.util.Map;
 import trace.Trace;
 import trace.Traces;
 
-public class Cluster {
+public class Cluster implements Iterable<Traces>{
 	private Map<Integer, Traces> cluster;
 	
 	public Cluster(){
 		cluster = new HashMap<Integer, Traces>();
 	}
-	public void put(Integer i, Trace t){
-		if(cluster.containsKey(i)){
-			cluster.get(i).addTrace(t);
+	public void put(Integer clusterId, Trace t){
+		if(cluster.containsKey(clusterId)){
+			cluster.get(clusterId).addTrace(t);
 		}
 		else{
 			Traces tmp = new Traces();
 			tmp.addTrace(t);
-			cluster.put(i, tmp);
+			cluster.put(clusterId, tmp);
 		}
 	}
 	
-	public Traces get(Integer i){
-		return cluster.get(i);
+	public Traces get(Integer clusterId){
+		return cluster.get(clusterId);
 	}
+	
+	
 }

@@ -21,10 +21,10 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>{
 	private Point minPt = new Point(180,180);
 	private boolean displayOnScreen = true;
 	
-	Trace(){
+	public Trace(){
 		
 	}
-	Trace(String _name){
+	public Trace(String _name){
 		name = _name;
 	}
 	

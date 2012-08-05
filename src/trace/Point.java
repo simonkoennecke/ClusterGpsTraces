@@ -9,10 +9,15 @@ public class Point implements Comparable<Point>{
 	private double _x;
 	private double _y;
 	
-	Point(double lon, double lat){
+	public Point(double lon, double lat){
 		setLat(lat);
 		setLon(lon);
 		PtOpSphere.translateToXY(this);
+	}
+	public Point(double x, double y, boolean XY){
+		setX(x);
+		setY(y);
+		PtOpPlane.translateToLatLon(this);
 	}
 	public double getLat(){
 		return _lat;

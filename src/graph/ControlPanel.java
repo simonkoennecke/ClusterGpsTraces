@@ -13,6 +13,9 @@ import javax.swing.plaf.SliderUI;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 
+import cluster.ClusterTraces;
+import cluster.KMeans;
+
 import com.lowagie.text.ListItem;
 
 import core.Debug;
@@ -66,7 +69,9 @@ public class ControlPanel extends JPanel{
 	    
 	    //Graphen erstellen
 	    graph = new MainGraph(gpx, dimLfPanel.width,dimLfPanel.height);
-        graph.init(); 
+	    graph.init(); 
+	    graph.setup(); 
+	    graph.redraw();
         
 	    //Prozedur zur Erstellung des rechten Panels
         listener = new ConfigMouseListener();
@@ -135,11 +140,14 @@ public class ControlPanel extends JPanel{
         createBtn(index, "Cut by Distance", "cutTraceByDistance");
         index++;
         //index = 2
-        createTxtField(index,"Toleranz für Polylinen-Vereinfachnung  [Meter]:", "270");
+        createTxtField(index,"Toleranz für Polylinen-Vereinfachnung  [Meter]:", "2000");
         createBtn(index, "Simplify Traces", "simplifyTraces");
         index++;
         //index = 3
-        
+        createTxtField(index,"Anzahl der Cluster:", "5");
+        createBtn(index, "Cluster Traces", "clusterTraces");
+        index++;
+        //index = 4
         createBtn(index, "Redraw Traces", "redrawTraces");
         
         
@@ -188,6 +196,33 @@ public class ControlPanel extends JPanel{
 		tree.setVisible(true);
 		//tree.setViewportView(taskDataTree);
 	}
+	/**
+	 * Ermittelt alle zu clusterene Traces.
+	 * @param t Die Traces nach dem vereinfachen.
+	 * @return liefert in einem "Traces" alle zu clusteren Traces
+	 */
+	private Traces getTraces(Traces t){
+		Traces tmp = new Traces();
+		getTraces(t, tmp);
+		return tmp;
+	}
+	/**
+	 * Helfer Funktion von getTraces(Traces t)
+	 * @param _t siehe Hauptfunktion
+	 * @param store hier werden alle Traces in einer Ebene gespeichert, die geclustert werden sollen.
+	 */
+	private void getTraces(Traces _t, Traces store){
+		for(Trace t : _t){		  
+			if(t.getSubTraces().size()>0){
+				getTraces(t.getSubTraces(),store);
+				continue;
+			}
+			if(t.size() <= 2)
+				continue;
+			store.addTrace(t);
+		}
+	}
+	
 	private class ConfigMouseListener implements MouseListener{
 		@Override
 		public void mouseClicked(MouseEvent arg0) {
@@ -215,7 +250,15 @@ public class ControlPanel extends JPanel{
 			else if(arg0.getComponent().getName() == "redrawTraces"){
 				graph.redraw();			
 		        Debug.syso("Repaint");
-			}			
+			}
+			else if(arg0.getComponent().getName() == "clusterTraces"){
+				Debug.syso("Cluster");
+				Traces tmp = getTraces(gpx.getTraces());
+				int k = Integer.valueOf(txtFields[3].getText());
+				ClusterTraces cltr = new KMeans(k, tmp);
+				cltr.run();
+				
+			}
 			else{
 				System.out.println("Event: " + arg0.getComponent().getName());
 			}

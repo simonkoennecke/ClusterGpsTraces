@@ -18,7 +18,7 @@ public class Main {
     	    GpxFile gpx = new GpxFile();
     	    
 	    	// create new JFrame
-	  		JFrame jf = new JFrame("Kite Swing Application");
+	  		JFrame jf = new JFrame("Clusteranalyse von GPS-Spuren");
 	  	 
 	  	    // this allows program to exit
 	  	    jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
