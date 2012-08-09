@@ -6,15 +6,24 @@ import trace.*;
 
 public class MainGraph extends PApplet {
 	private static final long serialVersionUID = -224150035454082876L;
+	
 	private GpxFile gpx;
-	int maxWindowWidth = 1024, maxWindowHeight = 800;
 	
-	Point maxPt, minPt;
+	private Cluster cluster;
 	
-	float lonFactor, latFactor;
+	private int maxWindowWidth = 1024, maxWindowHeight = 800;
 	
-	float xFactor, yFactor;
+	private Point maxPt, minPt;
 	
+	private float lonFactor, latFactor;
+	
+	private float xFactor, yFactor;
+	
+	private static int windowBorder = 40;
+	
+	private enum paintModeOption {Traces, Cluster};
+	
+	private paintModeOption paintMode = paintModeOption.Traces;
 	
 	public MainGraph(GpxFile _gpx, int w, int h){
 		gpx = _gpx;
@@ -28,7 +37,7 @@ public class MainGraph extends PApplet {
 		smooth();
 		noLoop();
 	}
-	static int windowBorder = 40;
+	
 	
 	public void setSize(int w, int h){
 		maxWindowHeight = h - windowBorder;
@@ -67,16 +76,18 @@ public class MainGraph extends PApplet {
 		Double y = (pt.getY()-minPt.getY()) * yFactor;
 		return y.floatValue()+(windowBorder/2);
 	}
-	public void drawCluster(Cluster c){
-		new DrawCluster(this, c).draw();
+	public void setCluster(Cluster c){
+		cluster = c;
+		paintMode = paintModeOption.Cluster;
+		
 	}
 	public void draw() {
 		background(255);
-		new DrawTraces(this, gpx).draw();
-		translate(20, 20);
-	  stroke(color(255,0,0));
-	  if (mousePressed) {
-	    line(mouseX,mouseY,pmouseX,pmouseY);
-	  }
+		if(paintMode == paintModeOption.Traces)
+			new DrawTraces(this, gpx).draw();
+		else if(paintMode == paintModeOption.Cluster)
+			new DrawCluster(this, cluster).draw();
+		
+		//stroke(color(255,0,0));
 	}
 }

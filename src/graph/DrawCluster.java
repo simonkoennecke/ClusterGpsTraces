@@ -1,5 +1,6 @@
 package graph;
 
+import trace.Trace;
 import trace.Traces;
 import cluster.Cluster;
 
@@ -19,9 +20,14 @@ public class DrawCluster {
 	public void draw(){
 		DrawTraces dT = new DrawTraces(g);
 		for(Traces t : cluster){
-			dT.setColor(c.getNext());
+			System.out.println("Color: " + c.getColor());
+			dT.setColor(c.getNextColor());			
 			dT.draw(t);
 		}
+		dT.setColor(g.color(0));
+		dT.setLineWeight(5);
+		dT.draw(cluster.getCentroid());		
+		
 	}
 	
 }

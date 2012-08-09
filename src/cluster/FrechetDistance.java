@@ -14,6 +14,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.util.GeometricShapeFactory;
 
 public class FrechetDistance implements TraceCompare{
@@ -332,7 +333,13 @@ public class FrechetDistance implements TraceCompare{
 				ls = gf.createLineString(new Coordinate[] { c1, midPoint, c2 });
 				temp = gf.createLineString(qCurve);
 				if (ls.intersects(temp)) {
-					intersect = ls.intersection(temp).getCoordinate();
+					try{
+						intersect = ls.intersection(temp).getCoordinate();
+					}
+					catch (TopologyException e) {
+						//System.out.println("Fehler: TopologyException");
+						intersect = null;
+					}
 				}
 				if (intersect != null) {
 					list.add(intersect.distance(pCurve[i]));

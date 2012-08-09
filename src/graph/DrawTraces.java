@@ -12,18 +12,22 @@ public class DrawTraces {
 	
 	private MainGraph g;
 	
-	private int lineColor;
+	private int lineColor, lineWeight=1;
+	
+	private ColorSet c = new ColorSet();
+	
 	public DrawTraces(MainGraph g, GpxFile gpx){
 		this.gpx = gpx;
 		this.g = g;
-		lineColor = g.color(0,0,0);
+		lineColor = g.color(0,0,0);//g.color(255,255,255);
 	}
 	public DrawTraces(MainGraph g){
 		this.g = g;
-		lineColor = g.color(0,0,0);
+		lineColor = g.color(0,0,0);//g.color(255,255,255);
 	}
 	private void drawArrow(Point p1, Point p2){
 		g.stroke(lineColor);
+		g.strokeWeight(lineWeight);
 		g.line(g.lon(p1), g.lat(p1), g.lon(p2), g.lat(p2));
 		//line(x(p1), y(p1), x(p2), y(p2));
 		/*
@@ -41,17 +45,21 @@ public class DrawTraces {
 			  endShape();
 		popMatrix();
 		*/
-		g.strokeWeight(1);
 
 	}
 	public void setColor(int c){
+		System.out.println("Trace Color von " + lineColor + " zu " + c);
 		lineColor = c;
 	}
+	public void setLineWeight(int w){
+		System.out.println("Line Weight of Trace von " + lineWeight + " zu " + w);
+		lineWeight = w;
+	}
 	public void draw(){
-		Traces traces = gpx.getTraces();
-		draw(traces);
+		draw(gpx.getTraces());
 	}
 	public void draw(Traces traces){
+		System.out.println("Trace Color: " + lineColor);
 		//int cntPoints = traces.countPoints();
 		//int avgPointsOnTrace = cntPoints / traces.size();
 		
@@ -69,12 +77,14 @@ public class DrawTraces {
 		  
 			Point p1 = t.get(0);
 			Point pn = t.get(t.size()-1);
+			int boxSize = 3;
+			g.stroke(g.color(0,0,0,255));
 			g.fill(g.color(255,0,0));
-			g.rect(g.lon(p1), g.lat(p1), 10,10);
+			g.rect(g.lon(p1), g.lat(p1), boxSize, boxSize);
 			g.fill(g.color(0,255,0));
-			g.rect(g.lon(pn), g.lat(pn), 10,10);
+			g.rect(g.lon(pn), g.lat(pn), boxSize, boxSize);
 			
-			g.stroke(g.color(0,0,0));
+			
 			int i=0;
 			for(Point pt : t){
 			  //System.out.println("Pt:" + (pt.getLat()-minPt.getLat()) * latFactor + ", " +(pt.getLon()-minPt.getLon()) * lonFactor + "");

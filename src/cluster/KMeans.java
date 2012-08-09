@@ -20,19 +20,15 @@ public class KMeans implements ClusterTraces {
 	/**
 	 * Hier werden die Cluster und deren Traces gespeichert
 	 */
-	private Cluster cluster;
+	private Cluster cluster, cluster2;
 	/**
-	 * centroid sind die Zentren der Cluster und die sind alle Traces
+	 * t sind alle Traces
 	 */
-	private Traces centroid, t;
+	private Traces t;
 	/**
 	 * k ist die Anzahl der Cluster
 	 */
 	private Integer k;
-	
-	/**
-	 * 
-	 */
 	
 	/**
 	 * Clusteranalyse mit k-Means-Algorithmus 
@@ -43,7 +39,7 @@ public class KMeans implements ClusterTraces {
 		this.k = k;
 		this.t = t;
 		cluster = new Cluster();
-		centroid = new Traces();
+		cluster2 = new Cluster();
 	}
 	/**
 	 * Erstellt die Clusterisierung von den Traces und
@@ -59,7 +55,7 @@ public class KMeans implements ClusterTraces {
 		Integer centroidId = 0;
 		boolean isCentroid;
 		//erstelle die paare von den die Frechet-Distanz berechnet werden müssen
-		for(Trace cp : centroid){
+		for(Trace cp : cluster.iteratorCentroid()){
 			for(int i = 0; i < t.size(); i++){
 				//Is die aktuelle Spure ein Centroid?
 				isCentroid = checkIsCentroid(rnd, i);
@@ -71,32 +67,58 @@ public class KMeans implements ClusterTraces {
 			centroidId++;
 		}
 		//2.1. Schritt: Berechne die Epsilonwerte
-		calcCuncurrentDist(tbl, stack);
+		calcCuncurrentDist(tbl, stack, cluster);
 		//2.2. Schritt: Teile anhand der gewonnen Epsilonwerte die Traces zu den Clustern zu
 		for(int i = 0; i < t.size(); i++){
-			isCentroid = checkIsCentroid(rnd, i);
 			//Is die aktuelle Spure ein Centroid?
 			isCentroid = checkIsCentroid(rnd, i);
 			//Die Spur ist kein Centroid
 			if(!isCentroid){
-				cluster.put(getBestFitClusterForTrace(tbl, i), t.get(i));
-			}
+				cluster.putTraces(getBestFitClusterForTrace(tbl, i), t.get(i));
+			}			
 		}
 		//Print Cluster
 		for(int i=0; i < k; i++){
-			Traces tmp = cluster.get(i);
-			System.out.println((i+1)+". Cluster (Anzahl der Traces im Cluster " + tmp.size() + " von " + t.size() + "):");
+			Traces tmp = cluster.getTraces(i);
 			if(tmp != null){
-				for(Trace t: tmp)
-					System.out.print(t + ", ");
-				System.out.println("");
+				System.out.println((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
 			}
 		}
-		//3. Schritt: Die Centroid berechnen anhand der gegeben Clusterverteilung.
-		Grid g = new Grid(cluster.get(0), 100, 100);
 		
+		//3. Schritt: Die Centroid berechnen anhand der gegeben Clusterverteilung.
+		Grid[] g = new Grid[cluster.getCentroid().size()];
+		int s = 0;
+		for(Trace t : cluster.getCentroid()){
+			g[s] = new Grid(cluster.getTraces(s), 1000, 1000);
+			cluster.putCentroid(s, g[s].calcMeanTrace());
+			s++;
+		}
+		/*
 		//4. Erneut Epsilonwerte zu den neuen Centroiden berechnen
-		//TODO: Neue Centroid berechnung und erneut "clustern"
+		//erstelle die paare von den die Frechet-Distanz berechnet werden müssen
+		EpsilonTable tbl2 = new EpsilonTable();
+		centroidId=0;
+		for(Trace cp : cluster2.iteratorCentroid()){
+			for(int i = 0; i < t.size(); i++){
+				stack.push(centroidId, i);				
+			}
+			centroidId++;
+		}
+		//4.1. Schritt: Berechne die Epsilonwerte
+		calcCuncurrentDist(tbl2, stack, cluster2);
+		//4.2. Schritt: Teile anhand der gewonnen Epsilonwerte die Traces zu den Clustern zu
+		for(int i = 0; i < t.size(); i++){
+			cluster2.putTraces(getBestFitClusterForTrace(tbl2, i), t.get(i));						
+		}
+		
+		//Print Cluster
+		for(int i=0; i < k; i++){
+			Traces tmp = cluster2.getTraces(i);
+			if(tmp != null){
+				System.out.println((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
+			}
+		}
+		*/	
 	}
 	/**
 	 * Starte die berechnung der Epsilonwerte von der Frechet-Distanz
@@ -104,11 +126,11 @@ public class KMeans implements ClusterTraces {
 	 * @param tbl Die Tabelle in dem die Epsilonwerte gespeichert werden
 	 * @param stack Die Centroid und Trace Paare von den die Frechet-Distanz berechnert werden soll
 	 */
-	private void calcCuncurrentDist(EpsilonTable tbl, AtomicStack stack){
+	private void calcCuncurrentDist(EpsilonTable tbl, AtomicStack stack, Cluster c){
 		int threadCnt = 50;
 		Thread[] thrds = new Thread[threadCnt];
 		for(int i=0; i < threadCnt; i++){
-			thrds[i] = new Thread(new calcEpsilonTable(i, t, centroid, tbl, stack));
+			thrds[i] = new Thread(new calcEpsilonTable(i, t, c.getCentroid(), tbl, stack));
 			thrds[i].start();
 		}
 		boolean allDead = false;
@@ -169,7 +191,7 @@ public class KMeans implements ClusterTraces {
 	public int[] selectCentroid(){
 		int[] rnd = randInt(k, t.size());
 		for(int i = 0; i < rnd.length; i++){
-			centroid.addTrace(t.get(i));
+			cluster.putCentroid(i, t.get(i));
 		}
 		return rnd;
 	}

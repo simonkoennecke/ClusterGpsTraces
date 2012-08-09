@@ -257,7 +257,8 @@ public class ControlPanel extends JPanel{
 				int k = Integer.valueOf(txtFields[3].getText());
 				ClusterTraces cltr = new KMeans(k, tmp);
 				cltr.run();
-				graph.drawCluster(cltr.getCluster());
+				graph.setCluster(cltr.getCluster());
+				graph.redraw();
 			}
 			else{
 				System.out.println("Event: " + arg0.getComponent().getName());

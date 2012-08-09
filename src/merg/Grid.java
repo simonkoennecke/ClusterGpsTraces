@@ -94,7 +94,7 @@ public class Grid {
 		if(dist(start,end) > 1){
 			int x = start[0], y=start[1];
 			boolean wX=true, wY=true;
-			System.out.println("Schritte (x: " + step[0] + ",y: " + step[1] + ")");
+			//System.out.println("Schritte (x: " + step[0] + ",y: " + step[1] + ")");
 			while(wX && wY){
 				if(x == end[0]){
 					wX = false;
@@ -207,12 +207,13 @@ public class Grid {
 			}
 		}
 		
+		meanTrace = new Trace();
 		for(int j=0; j < c; j++){
 			if(colAdd[j]){
-				res.addPoint(new Point(minPt.getLon() + j * lonRaster,
+				meanTrace.addPoint(new Point(minPt.getLon() + j * lonRaster,
 							minPt.getLat() + col[j] * latRaster));
 			}
 		}
-		return res;
+		return meanTrace;
 	}
 }
