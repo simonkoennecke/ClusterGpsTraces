@@ -7,9 +7,11 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import merg.Grid;
+import merg.TracesMerge;
 
 import trace.Trace;
 import trace.Traces;
+import trace.TrcOp;
 
 /**
  * Diese Klasse fasst die Traces zu k Cluster zusammen. 
@@ -84,16 +86,30 @@ public class KMeans implements ClusterTraces {
 				System.out.println((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
 			}
 		}
+		//3. Schritt: Die Centroid berechnen anhand der gegeben Clusterverteilung.
+		TracesMerge[] g = new TracesMerge[cluster.getCentroid().size()];
+		int s = 0;
+		for(Trace t : cluster.getCentroid()){
+			g[s] = new TracesMerge();
+			g[s].set(cluster.getTraces(s));
+			g[s].run();
+			Trace tmp = TrcOp.DouglasPeuckerReduction(g[s].get(), 1000);
+			cluster2.putCentroid(s, tmp);
+			s++;
+		}
 		
+		/*
 		//3. Schritt: Die Centroid berechnen anhand der gegeben Clusterverteilung.
 		Grid[] g = new Grid[cluster.getCentroid().size()];
 		int s = 0;
 		for(Trace t : cluster.getCentroid()){
-			g[s] = new Grid(cluster.getTraces(s), 1000, 1000);
-			cluster.putCentroid(s, g[s].calcMeanTrace());
+			g[s] = new Grid(cluster.getTraces(s), 1000, 1000);			
+			Trace tmp = TrcOp.DouglasPeuckerReduction(g[s].calcMeanTrace(), 1000);
+			cluster2.putCentroid(s, tmp);
 			s++;
 		}
-		/*
+		*/
+		
 		//4. Erneut Epsilonwerte zu den neuen Centroiden berechnen
 		//erstelle die paare von den die Frechet-Distanz berechnet werden müssen
 		EpsilonTable tbl2 = new EpsilonTable();
@@ -118,7 +134,8 @@ public class KMeans implements ClusterTraces {
 				System.out.println((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
 			}
 		}
-		*/	
+		
+			
 	}
 	/**
 	 * Starte die berechnung der Epsilonwerte von der Frechet-Distanz
@@ -323,6 +340,10 @@ public class KMeans implements ClusterTraces {
 
 	@Override
 	public Cluster getCluster() {
-		return cluster;
+		return cluster2;
+	}
+	
+	public Cluster[] getClusters() {
+		return new Cluster[]{cluster, cluster2};
 	}
 }

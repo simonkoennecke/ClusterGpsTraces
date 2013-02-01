@@ -1,6 +1,7 @@
 package trace;
 
-import java.util.ArrayList;
+import java.io.File;
+import java.net.URL;
 import java.util.Iterator;
 import java.util.Stack;
 
@@ -11,24 +12,30 @@ import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.XMLEvent;
 import javax.xml.transform.stream.StreamSource;
 
+
 public class GpxLoader {
 	private String _path;
 	private StreamSource stream;
-	public GpxLoader(String path) {
+	private XMLEventReader  evRd;
+	public GpxLoader(String path) throws XMLStreamException {
 		_path = path;
 		stream = new StreamSource( _path );
+		XMLInputFactory inputFactory = XMLInputFactory.newInstance();
+		evRd = inputFactory.createXMLEventReader( stream );		
 	}
-	public GpxLoader(String path, boolean loadLocal) {
+	
+	public GpxLoader(String path, boolean loadLocal) throws XMLStreamException {
 		_path = path;
-		stream = new StreamSource(this.getClass().getResourceAsStream(path));
+		XMLInputFactory inputFactory = XMLInputFactory.newInstance();
+		evRd = inputFactory.createXMLEventReader(this.getClass().getResourceAsStream(path));
 	}
 	
 	public Traces getTraces() throws XMLStreamException{
 		Traces t = new Traces();
-		XMLInputFactory inputFactory = XMLInputFactory.newInstance();
-		XMLEventReader  evRd = inputFactory.createXMLEventReader( stream );
+		
 		Stack<String>   stck = new Stack<String>();
 		Trace tmpTrace = new Trace();
+		Integer traceVersionsId = tmpTrace.getVersionId();
 		double lon=0, lat=0;
 		
 		while( evRd.hasNext() ) {
@@ -37,7 +44,7 @@ public class GpxLoader {
 				stck.push( ev.asStartElement().getName().getLocalPart() );
 				
 				if(ev.asStartElement().getName().getLocalPart() == "trk"){
-					tmpTrace = t.addTrace();					
+					tmpTrace = t.addTrace("vId " + traceVersionsId + "",traceVersionsId);					
 				}
 				//TODO: Namen mit importieren
 				/*if(ev.asStartElement().getName().getLocalPart() == "name"){

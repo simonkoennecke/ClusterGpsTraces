@@ -77,38 +77,45 @@ public class FrechetDistance implements TraceCompare{
 	 */
 	public boolean isFrechet(double epsilon) {
 		// check first pair of segments
-		if (Line2D.ptSegDist(pl1[0].getX(), pl1[0].getY(), pl1[1].getX(),
-				pl1[1].getY(), pl2[0].getX(), pl2[0].getY()) > epsilon
-				&& Line2D.ptSegDist(pl1[0].getX(), pl1[0].getY(),
-						pl1[1].getX(), pl1[1].getY(), pl2[1].getX(),
-						pl2[1].getY()) > epsilon) {
-			return false;
-		}
-		if (Line2D.ptSegDist(pl2[0].getX(), pl2[0].getY(), pl2[1].getX(),
-				pl2[1].getY(), pl1[0].getX(), pl1[0].getY()) > epsilon
-				&& Line2D.ptSegDist(pl2[0].getX(), pl2[0].getY(),
-						pl2[1].getX(), pl1[2].getY(), pl1[1].getX(),
-						pl1[1].getY()) > epsilon) {
-			return false;
-		}
 
-		// check last pair of segments
-		if (Line2D.ptSegDist(pl1[pLength - 2].getX(), pl1[pLength - 2].getY(),
-				pl1[pLength - 1].getX(), pl1[pLength - 1].getY(),
-				pl2[qLength - 1].getX(), pl2[qLength - 1].getY()) > epsilon
-				&& Line2D.ptSegDist(pl1[pLength - 2].getX(),
-						pl1[pLength - 2].getY(), pl1[pLength - 1].getX(),
-						pl1[pLength - 1].getY(), pl2[qLength - 2].getX(),
-						pl2[qLength - 2].getY()) > epsilon) {
-			return false;
+		try{
+			if (Line2D.ptSegDist(pl1[0].getX(), pl1[0].getY(), pl1[1].getX(),
+					pl1[1].getY(), pl2[0].getX(), pl2[0].getY()) > epsilon
+					&& Line2D.ptSegDist(pl1[0].getX(), pl1[0].getY(),
+							pl1[1].getX(), pl1[1].getY(), pl2[1].getX(),
+							pl2[1].getY()) > epsilon) {
+				return false;
+			}
+			if (Line2D.ptSegDist(pl2[0].getX(), pl2[0].getY(), pl2[1].getX(),
+					pl2[1].getY(), pl1[0].getX(), pl1[0].getY()) > epsilon
+					&& Line2D.ptSegDist(pl2[0].getX(), pl2[0].getY(),
+							pl2[1].getX(), pl1[2].getY(), pl1[1].getX(),
+							pl1[1].getY()) > epsilon) {
+				return false;
+			}
+		
+
+			// check last pair of segments
+			if (Line2D.ptSegDist(pl1[pLength - 2].getX(), pl1[pLength - 2].getY(),
+					pl1[pLength - 1].getX(), pl1[pLength - 1].getY(),
+					pl2[qLength - 1].getX(), pl2[qLength - 1].getY()) > epsilon
+					&& Line2D.ptSegDist(pl1[pLength - 2].getX(),
+							pl1[pLength - 2].getY(), pl1[pLength - 1].getX(),
+							pl1[pLength - 1].getY(), pl2[qLength - 2].getX(),
+							pl2[qLength - 2].getY()) > epsilon) {
+				return false;
+			}
+			if (Line2D.ptSegDist(pl2[qLength - 2].getX(), pl2[qLength - 2].getY(),
+					pl2[qLength - 1].getX(), pl2[qLength - 1].getY(),
+					pl1[pLength - 2].getX(), pl1[pLength - 2].getY()) > epsilon
+					&& Line2D.ptSegDist(pl2[qLength - 2].getX(),
+							pl2[qLength - 2].getY(), pl2[qLength - 1].getX(),
+							pl2[qLength - 1].getY(), pl1[pLength - 1].getX(),
+							pl1[pLength - 1].getY()) > epsilon) {
+				return false;
+			}
 		}
-		if (Line2D.ptSegDist(pl2[qLength - 2].getX(), pl2[qLength - 2].getY(),
-				pl2[qLength - 1].getX(), pl2[qLength - 1].getY(),
-				pl1[pLength - 2].getX(), pl1[pLength - 2].getY()) > epsilon
-				&& Line2D.ptSegDist(pl2[qLength - 2].getX(),
-						pl2[qLength - 2].getY(), pl2[qLength - 1].getX(),
-						pl2[qLength - 1].getY(), pl1[pLength - 1].getX(),
-						pl1[pLength - 1].getY()) > epsilon) {
+		catch (ArrayIndexOutOfBoundsException e) {
 			return false;
 		}
 

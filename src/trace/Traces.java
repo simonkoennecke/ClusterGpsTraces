@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
-	private ArrayList<Trace> traces = new ArrayList<Trace>();
+	private final ArrayList<Trace> traces = new ArrayList<Trace>();
 	
 	private Point maxPt;
 	private Point minPt;
@@ -20,9 +20,11 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 	public int size(){
 		return traces.size();
 	}
-	
 	public Trace addTrace(){
-		Trace trk = new Trace();
+		return addTrace("Sub Trace", null);
+	}	
+	public Trace addTrace(String _name, Integer _vId){
+		Trace trk = new Trace(_name, _vId);
 		traces.add(trk);
 		return trk;
 	}	
@@ -69,6 +71,23 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 			cnt += t.size();
 		}
 		return cnt;
+	}
+	public double countDisplayedTraces(){
+		return countDisplayedTraces(this, 0);
+	}
+	private double countDisplayedTraces(Traces traces,double cnt){
+		for(Trace t : traces){
+			if(t.getSubTraces().size() == 0){
+				cnt += 1;
+			}
+			else{
+				cnt += countDisplayedTraces(t.getSubTraces(),cnt);
+			}
+		}
+		return cnt;
+	}
+	public String toString(){
+		return "Traces (" + traces.size() + ")";
 	}
 	@Override
 	public Iterator<Trace> iterator() {

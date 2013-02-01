@@ -2,30 +2,53 @@ package trace;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class Trace extends IterInterface<Point> implements Iterable<Point>{
+public class Trace extends IterInterface<Point> implements Iterable<Point>, Cloneable{
+	/**
+	 * Versionsnummer Manager Klasse 
+	 */
+	private static AtomicInteger vIdMgnt = new AtomicInteger();
+	/**
+	 * Versionsnummer zu der die Klasse gehört
+	 */
+	private Integer vId;
+	
 	/**
 	 * Name des Traces aus dem GPX File
 	 */
 	private String name;
 	/**
-	 * Eine Liste von Punkten die Reihnfolge gibt die Richtung an.
+	 * Eine Liste von Punkten die Reihenfolge gibt die Richtung an.
 	 */
 	private ArrayList<Point> trace = new ArrayList<Point>();
 	/**
 	 * In subTraces werden die Teilstrecken von Trace abgespeichert. 
 	 */
 	private Traces subTraces = new Traces();
-	//hier wird die maximale lon oder lat gespeichert
-	private Point maxPt = new Point(0,0);
-	private Point minPt = new Point(180,180);
-	private boolean displayOnScreen = true;
+	/**
+	 * hier wird die maximale lon oder lat gespeichert
+	 */
+	private Point maxPt = new Point(0,0), minPt = new Point(180,180);
+	/**
+	 * 
+	 * traversierung=true von 0 bis n und bei false n bis 0
+	 */
+	private boolean displayOnScreen = true, traversierung=true;
 	
 	public Trace(){
-		
+		this("",null);
 	}
+
 	public Trace(String _name){
+		this(_name,null);
+	}
+	
+	public Trace(String _name, Integer _vId){
 		name = _name;
+		if(_vId == null)
+			_vId = vIdMgnt.getAndIncrement();
+		setVersionId(_vId);
 	}
 	
 	public Point get(int index){
@@ -57,7 +80,7 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>{
 
 	@Override
 	public Iterator<Point> iterator() {
-		Iter<Trace, Point> iter = new Iter<Trace, Point>(this);
+		Iter<Trace, Point> iter = new Iter<Trace, Point>(this, traversierung);
 		return iter;
 	}
 	
@@ -68,6 +91,27 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>{
 			d += PtOpPlane.distance(p, pt);
 			p = pt;
 		}		
+		return d;
+	}
+	public double getMinDistance(){
+		double d = Double.MAX_VALUE;
+		Point p = null;
+		for(Point pt : this){
+			if(p != null)
+				d = Math.min(d, PtOpPlane.distance(p, pt));
+			p = pt;
+		}		
+		return d;
+	}
+	public double getMeanCardinalDirection(){
+		double d = 0;
+		Point p = null;
+		for(Point pt : this){
+			if(p != null)
+				d += PtOpSphere.cardinalDirection(p, pt);
+			p = pt;
+		}
+		d = d / trace.size();
 		return d;
 	}
 
@@ -82,8 +126,11 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>{
 	public Traces getSubTraces() {
 		return subTraces;
 	}
+	public Trace addSubTraces(Integer _vId) {
+		return this.subTraces.addTrace("Sub Trace " + name, _vId);
+	}
 	public Trace addSubTraces() {
-		return this.subTraces.addTrace();
+		return this.subTraces.addTrace("Sub Trace " + name, getVersionId());
 	}
 	public Trace addSubTraces(Trace subTraces) {
 		return this.subTraces.addTrace(subTraces);
@@ -94,9 +141,36 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>{
 	public void setName(String name) {
 		this.name = name;
 	}
+	public void setTraversierung(boolean traversierung){
+		this.traversierung = traversierung;
+	}
+	public boolean getTraversierung(){
+		return traversierung;
+	}
 	
 	public String toString(){
-		return "Trace (" + name + " , " + subTraces.size() + ", " + trace.size() + ")";
+		return "Trace (" + vId + " , " + subTraces.size() + ", " + trace.size() + ")";
+	}
+	
+	public Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
+
+	public Integer getVersionId() {
+		return vId;
 	}
 
+	public void setVersionId(Integer vId) {
+		if(vId == null)
+			this.vId = vIdMgnt.getAndIncrement();
+		else
+			this.vId = vId;
+		
+	}
+	public static Integer getIncrementVersionId(){
+		return vIdMgnt.getAndIncrement();
+	}
+	public static Integer getDecrementVersionId(){
+		return vIdMgnt.getAndDecrement();
+	}	
 }

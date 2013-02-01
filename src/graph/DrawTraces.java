@@ -48,18 +48,18 @@ public class DrawTraces {
 
 	}
 	public void setColor(int c){
-		System.out.println("Trace Color von " + lineColor + " zu " + c);
+		//System.out.println("Trace Color von " + lineColor + " zu " + c);
 		lineColor = c;
 	}
 	public void setLineWeight(int w){
-		System.out.println("Line Weight of Trace von " + lineWeight + " zu " + w);
+		//System.out.println("Line Weight of Trace von " + lineWeight + " zu " + w);
 		lineWeight = w;
 	}
 	public void draw(){
 		draw(gpx.getTraces());
 	}
 	public void draw(Traces traces){
-		System.out.println("Trace Color: " + lineColor);
+		//System.out.println("Trace Color: " + lineColor);
 		//int cntPoints = traces.countPoints();
 		//int avgPointsOnTrace = cntPoints / traces.size();
 		

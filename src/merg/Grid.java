@@ -132,6 +132,36 @@ public class Grid {
 		if(dY != 0)
 			algSign[1] = dY/Math.abs(dY);
 		
+		dX = Math.abs(dX);
+		dY = Math.abs(dY);
+		if(dX > dY){
+			if(dY == 0)
+				r[0] = 0;
+			else
+				r[0] = algSign[0];
+			r[1] = algSign[1];
+		}
+		//ist y ist größer als x
+		else if (dX < dY){
+			r[0] = 1 * algSign[0];
+			if(dX == 0)
+				r[1] = 0;
+			else
+				r[1] = algSign[1];
+		}
+		else{
+			r[0] = algSign[0];
+			r[1] = algSign[1]; 
+		}
+		//Hier werden Zeilen oder Spalten ausgelassen
+		/*
+		 * |---|---|---|
+		 * | 1 |   |   | X\
+		 * |---|---|---|   \
+		 * |   |   | 1 |    \>
+		 * |---|---|---|
+		 */
+		/*
   		dX = Math.abs(dX);
 		dY = Math.abs(dY);
 		if(dX > dY){
@@ -152,7 +182,8 @@ public class Grid {
 		else{
 			r[0] = algSign[0];
 			r[1] = algSign[1]; 
-		}
+		}*/
+		
 		return r;
 	}
 	/**
@@ -181,16 +212,26 @@ public class Grid {
 		else{
 			grid.put(iC, new GridRow(iR,t, pt));
 		}
-		System.out.println("(" + iC + "," + iR + ")");
+		//System.out.println("(" + iC + "," + iR + ")");
 		//return new int[]{iC,iR};
 	}
-	
+	/**
+	 * Liefert die Zeile zurück.
+	 * @param column Die Spaltennummer die erfragt wird
+	 * @return GridRow mit den Häufigkeiten, wie viele Punkte in der jeweiligen Zeile liegen
+	 */
 	public GridRow getRow(int column){
 		if(grid.containsKey(column))
 			return grid.get(column);
 		else
 			return null;
 	}
+	/**
+	 * Berechnen des Centroid für die Hinzugefügten Traces.
+	 * Centroid soll der geometrische Schwerpunkt aller Traces werden,
+	 * das soll nicht als Punkt aufgefasst werden, sondern als eine Polyliene.
+	 * @return Trace mit den Punkten
+	 */
 	public Trace calcMeanTrace(){
 		int[] col = new int[c];
 		boolean[] colAdd = new boolean[c];

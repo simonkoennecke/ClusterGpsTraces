@@ -2,6 +2,7 @@ package graph;
 
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.beans.PropertyChangeEvent;
@@ -30,10 +31,13 @@ public class ControlPanel extends JPanel{
 	private Dimension dimLfPanel;
 	private Dimension dimRtPanel;
 	private Dimension dimComponent;
+	private static int tabBorder = 20;
 	
 	private static int sizeRtPanel = 270;
 	
-	private JPanel rtPanel = new JPanel();
+	private JPanel rtPanel = new JPanel(), lftPanel = new JPanel();
+	
+	private JTabbedPane tabbedPanel;
 	
 	private JSplitPane splitPane;
 	
@@ -46,11 +50,12 @@ public class ControlPanel extends JPanel{
 	 * 1. 
 	 * 2.
 	 */
-	private JTextField txtFields[] = new JTextField[5];
+	private static int noOfFields = 6;
+	private JTextField txtFields[] = new JTextField[noOfFields];
 	
-	private JButton btnList[] = new JButton[5];
+	private JButton btnList[] = new JButton[noOfFields];
 	
-	private JLabel lblList[] = new JLabel[5];
+	private JLabel lblList[] = new JLabel[noOfFields];
 	
 	private ConfigMouseListener listener;
 	
@@ -60,27 +65,25 @@ public class ControlPanel extends JPanel{
 	public ControlPanel(GpxFile _gpx) {
 		gpx = _gpx;
 		
-		dimLfPanel = new Dimension(w-sizeRtPanel,h);
+		dimLfPanel = new Dimension(w-sizeRtPanel-20,h-30);
 		dimRtPanel = new Dimension(sizeRtPanel,h);
 		dimComponent = new Dimension(sizeRtPanel-40, 20);
 		
 		setBackground(new Color(180, 180, 220));
 	    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 	    
-	    //Graphen erstellen
-	    graph = new MainGraph(gpx, dimLfPanel.width,dimLfPanel.height);
-	    graph.init(); 
-	    graph.setup(); 
-	    graph.redraw();
+	    
         
 	    //Prozedur zur Erstellung des rechten Panels
         listener = new ConfigMouseListener();
 	    rtPanel();
 	    
+	    lftPanel();
+	    
 	    //Zwei Spalten Layout anlegen
 	    splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 	    splitPane.setTopComponent(rtPanel);
-	    splitPane.setBottomComponent(graph);
+	    splitPane.setBottomComponent(lftPanel);
 
 	    //Die Spaltenaufteilung festlegen
 	    graph.setMinimumSize(dimLfPanel);
@@ -100,20 +103,61 @@ public class ControlPanel extends JPanel{
 	    };
 	    splitPane.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY,resizeWindows);
 	    addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY,resizeWindows);
+	    
 	    //Das erstelle Layout ans Formular binden
-	    add(splitPane);	    
+	    add(splitPane);
 	}
 	private void calcPanelSize(){
 		Dimension s = splitPane.getSize();
-		dimLfPanel = new Dimension(s.width-sizeRtPanel,s.height);
+		dimLfPanel = new Dimension(s.width-sizeRtPanel-20,s.height-30);
 		dimRtPanel = new Dimension(sizeRtPanel,s.height);
 		dimComponent = new Dimension(sizeRtPanel-40, 20);
 		splitPane.setDividerLocation(sizeRtPanel);
-		graph.setSize(dimLfPanel.width, dimLfPanel.height);
-		graph.setPreferredSize(dimLfPanel);
+		graph.setSize(dimLfPanel.width - tabBorder, dimLfPanel.height - tabBorder);
+		lftPanel.setPreferredSize(dimLfPanel);
+		tabbedPanel.setPreferredSize(new Dimension(dimLfPanel.width - (tabBorder/2), dimLfPanel.height - (tabBorder/2)));
 		rtPanel.setPreferredSize(dimRtPanel);		
 		
 	}
+	private void lftPanel(){
+		tabbedPanel = new JTabbedPane();
+		
+		//Graphen erstellen
+	    graph = new MainGraph(gpx, dimLfPanel.width-tabBorder,dimLfPanel.height-tabBorder);
+	    graph.init();
+	    graph.setup(); 
+	    graph.redraw();
+	    
+		ImageIcon icon = null;
+         
+        JComponent panel1 = makeTextPanel("Panel #1");
+        tabbedPanel.addTab("View all Traces", icon, graph, "Does nothing");
+        tabbedPanel.setMnemonicAt(0, KeyEvent.VK_1);
+         
+        JComponent panel2 = makeTextPanel("Panel #2");
+        tabbedPanel.addTab("Tab 2", icon, panel2, "Does twice as much nothing");
+        tabbedPanel.setMnemonicAt(1, KeyEvent.VK_2);
+         
+        JComponent panel3 = makeTextPanel("Panel #3");
+        tabbedPanel.addTab("Tab 3", icon, panel3, "Still does nothing");
+        tabbedPanel.setMnemonicAt(2, KeyEvent.VK_3);
+         
+        JComponent panel4 = makeTextPanel("Panel #4 (has a preferred size of 410 x 50).");
+        panel4.setPreferredSize(new Dimension(410, 50));
+        tabbedPanel.addTab("Tab 4", icon, panel4, "Does nothing at all");
+        tabbedPanel.setMnemonicAt(3, KeyEvent.VK_4);
+         
+        //Add the tabbed pane to this panel.
+        lftPanel.add(tabbedPanel);
+	}
+	protected JComponent makeTextPanel(String text) {
+        JPanel panel = new JPanel(false);
+        JLabel filler = new JLabel(text);
+        filler.setHorizontalAlignment(JLabel.CENTER);
+        panel.setLayout(new GridLayout(1, 1));
+        panel.add(filler);
+        return panel;
+    }
 	/**
 	 * Prozedur zur Erstellung des rechten Panels für die Parameter.
 	 * 
@@ -133,11 +177,12 @@ public class ControlPanel extends JPanel{
         rtPanel.add(treeView);
         int index = 0;
         createTxtField(index, "Fläche verkleinern [Grad]:", "0.0004");
-        createBtn(index, "Resize Plain", "resizePlain");
+        createBtn(index, "Resize Plane", "resizePlain");
         index++;
         //index = 1
-        createTxtField(index, "Abschneiden bei einer Distanz von länger als:", "500");
+        createTxtField(index, "Distance:", "500");
         createBtn(index, "Cut by Distance", "cutTraceByDistance");
+        createBtn(index, "Split after the Distance", "splitTraceAfterDistance");
         index++;
         //index = 2
         createTxtField(index,"Toleranz für Polylinen-Vereinfachnung  [Meter]:", "2000");
@@ -149,7 +194,9 @@ public class ControlPanel extends JPanel{
         index++;
         //index = 4
         createBtn(index, "Redraw Traces", "redrawTraces");
-        
+        index++;
+        //index = 5
+        createBtn(index, "Redo", "redo");
         
         
 	}
@@ -247,6 +294,13 @@ public class ControlPanel extends JPanel{
 				reloadTree();
 				graph.redraw();
 			}
+			else if(arg0.getComponent().getName() == "splitTraceAfterDistance"){
+				double tol = Double.valueOf(txtFields[1].getText());
+				TrcOp.splitTraceAfterDistance(gpx.getTraces(), tol);
+				Debug.syso("Split Trace after Distance");
+				reloadTree();
+				graph.redraw();
+			}			
 			else if(arg0.getComponent().getName() == "redrawTraces"){
 				graph.redraw();			
 		        Debug.syso("Repaint");
@@ -258,6 +312,12 @@ public class ControlPanel extends JPanel{
 				ClusterTraces cltr = new KMeans(k, tmp);
 				cltr.run();
 				graph.setCluster(cltr.getCluster());
+				graph.redraw();
+			}
+			else if(arg0.getComponent().getName() == "redo"){
+				Debug.syso("Redo");				
+				TrcOp.redo(gpx);
+				reloadTree();
 				graph.redraw();
 			}
 			else{
