@@ -29,7 +29,13 @@ public class MainGraph extends PApplet {
 		gpx = _gpx;
 		setSize(w, h);
 	}
-	
+	public void setGpxFile(GpxFile _gpx){
+		gpx = _gpx;
+		setSize(maxWindowHeight + windowBorder, maxWindowWidth + windowBorder);;
+	    setup(); 
+	    redraw();
+		
+	}
 	public void setup(){
 		size(maxWindowWidth,maxWindowHeight);
 

@@ -1,10 +1,14 @@
 package cluster;
 
+import java.awt.geom.Point2D;
+import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+
+import core.Debug;
 
 import merg.Grid;
 import merg.TracesMerge;
@@ -49,9 +53,11 @@ public class KMeans implements ClusterTraces {
 	 * Die Ergebnisse kann man mit get von der Klasse holen.
 	 */
 	public void run(){
-		//1. Schritt: Wähle die Centroid in dem zufällig Traces gewählt werden.
+		//0. Versionsnummer für die Clusterung
+		Integer vId = Trace.getIncrementVersionId();
+		Debug.syso("//1. Schritt: Wähle die Centroid in dem zufällig Traces gewählt werden.");
 		int[] rnd = selectCentroid();
-		//2. Schritt: Berechne die Fréchet-Distance von allen Traces zu den Centroiden
+		Debug.syso("//2. Schritt: Berechne die Fréchet-Distance von allen Traces zu den Centroiden");
 		EpsilonTable tbl = new EpsilonTable();
 		AtomicStack stack = new AtomicStack();
 		Integer centroidId = 0;
@@ -59,6 +65,8 @@ public class KMeans implements ClusterTraces {
 		//erstelle die paare von den die Frechet-Distanz berechnet werden müssen
 		for(Trace cp : cluster.iteratorCentroid()){
 			for(int i = 0; i < t.size(); i++){
+				//Datenformat für die Fréchet Distanz erstellen
+				Point2D[] tmpPoints = t.get(i).getPoints();
 				//Is die aktuelle Spure ein Centroid?
 				isCentroid = checkIsCentroid(rnd, i);
 				//Die Spur ist kein Centroid
@@ -68,9 +76,9 @@ public class KMeans implements ClusterTraces {
 			}
 			centroidId++;
 		}
-		//2.1. Schritt: Berechne die Epsilonwerte
+		Debug.syso("//2.1. Schritt: Berechne die Epsilonwerte");
 		calcCuncurrentDist(tbl, stack, cluster);
-		//2.2. Schritt: Teile anhand der gewonnen Epsilonwerte die Traces zu den Clustern zu
+		Debug.syso("//2.2. Schritt: Teile anhand der gewonnen Epsilonwerte die Traces zu den Clustern zu");
 		for(int i = 0; i < t.size(); i++){
 			//Is die aktuelle Spure ein Centroid?
 			isCentroid = checkIsCentroid(rnd, i);
@@ -83,17 +91,25 @@ public class KMeans implements ClusterTraces {
 		for(int i=0; i < k; i++){
 			Traces tmp = cluster.getTraces(i);
 			if(tmp != null){
-				System.out.println((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
+				Debug.syso((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
 			}
 		}
-		//3. Schritt: Die Centroid berechnen anhand der gegeben Clusterverteilung.
+		Debug.syso("//3. Schritt: Die Centroid berechnen anhand der gegeben Clusterverteilung.");
 		TracesMerge[] g = new TracesMerge[cluster.getCentroid().size()];
 		int s = 0;
 		for(Trace t : cluster.getCentroid()){
 			g[s] = new TracesMerge();
 			g[s].set(cluster.getTraces(s));
 			g[s].run();
-			Trace tmp = TrcOp.DouglasPeuckerReduction(g[s].get(), 1000);
+			Trace tmp = TrcOp.DouglasPeuckerReduction(g[s].get(), 1000.0, vId);
+			try{
+				Point2D[] tmpPoints = tmp.getPoints();
+			}
+			catch (NullPointerException e) {
+				// TODO: Warum kommt hier solch eine Exception				
+				tmp = g[s].get();
+				Debug.syso("//3. Error: NullPointer Trace hat " + tmp.size() + " Punkte");
+			}
 			cluster2.putCentroid(s, tmp);
 			s++;
 		}
@@ -150,11 +166,23 @@ public class KMeans implements ClusterTraces {
 			thrds[i] = new Thread(new calcEpsilonTable(i, t, c.getCentroid(), tbl, stack));
 			thrds[i].start();
 		}
+		int newLine = 90;
 		boolean allDead = false;
 		while(!allDead){
 			while(!stack.empty()){
 				try{
-					Thread.sleep(100);
+					Thread.sleep(100);					
+					
+					//Ausgabe zur Anzeige, dass das Programm noch läuft.
+					if(newLine == 0){
+						Debug.syso(".");
+						newLine = 90;						
+					}
+					else{
+						Debug.sysoWithLn(".");
+						newLine--;
+					}
+					
 				}
 				catch ( InterruptedException e) {
 					//do nothing
@@ -329,10 +357,16 @@ public class KMeans implements ClusterTraces {
 		public void run() {
 			TraceCompare tCmp = new FrechetDistance();
 			while(!toCalc.empty()){
-				int[] ids = toCalc.pop();//0 = centroidId, 1 = traceId
-				double e = tCmp.compareTo(centroid.get(ids[0]), t.get(ids[1]));
-				System.out.println("Thread "+threadId +": Centroid " + ids[0] + " und Trace " + ids[1] + " hat ein Epsilon von " + e);
-				tbl.put(ids[0], ids[1], e);
+				try{
+					int[] ids = toCalc.pop();//0 = centroidId, 1 = traceId
+					double e = tCmp.compareTo(centroid.get(ids[0]), t.get(ids[1]));
+					//System.out.println("Thread "+threadId +": Centroid " + ids[0] + " und Trace " + ids[1] + " hat ein Epsilon von " + e);
+					tbl.put(ids[0], ids[1], e);
+				}
+				catch(EmptyStackException e){
+					//zwischen empty und pop hat ein anderer Prozess schon ein pop aufgerufen.
+					break;
+				}
 			}
 		}
 		

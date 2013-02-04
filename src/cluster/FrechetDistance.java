@@ -17,28 +17,28 @@ import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.util.GeometricShapeFactory;
 
+import core.Debug;
+
 public class FrechetDistance implements TraceCompare{
 	
 	@Override
 	public Double compareTo(Trace t1, Trace t2) {
 		//Transformiere Polylinien Kodierung in die hier genutzte
-		Point2D[] p = new Point2D[t1.size()];
-		Point2D[] q = new Point2D[t2.size()];
-		
-		int i = 0;
-        for(Point pt: t1){
-        	p[i] = new Point2D.Double(pt.getLon(), pt.getLat());
-        	i++;
-        }
-		i = 0;
-		for(Point pt: t2){
-        	q[i] = new Point2D.Double(pt.getLon(), pt.getLat());
-        	i++;
-        }
-		initFrechetDistance(p,q);
-         
-		return computeFrechetDistance();
+		try{
+			Point2D[] p = t1.getPoints();
+			Point2D[] q = t2.getPoints();
+			
+			initFrechetDistance(p,q);
+	         
+			return computeFrechetDistance();
+		}
+		catch(NullPointerException e){
+			//TODO: Beim lesen von getPoints kommen anscheinend noch Null Pointer Execptions auf
+			Debug.syso("Fehler beim berechnen von der Fréchet-Distanz (" + e.toString() + ").");
+			return Double.MAX_VALUE;
+		}
 	}
+	
 	
 	static double delta = 0.01;
 	public double[][] a, b, c, d;

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import java.awt.geom.Point2D;
+
 public class Trace extends IterInterface<Point> implements Iterable<Point>, Cloneable{
 	/**
 	 * Versionsnummer Manager Klasse 
@@ -23,6 +25,10 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 	 */
 	private ArrayList<Point> trace = new ArrayList<Point>();
 	/**
+	 * 
+	 */
+	private Point2D[] aryTracePoints; 
+	/**
 	 * In subTraces werden die Teilstrecken von Trace abgespeichert. 
 	 */
 	private Traces subTraces = new Traces();
@@ -35,6 +41,7 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 	 * traversierung=true von 0 bis n und bei false n bis 0
 	 */
 	private boolean displayOnScreen = true, traversierung=true;
+	
 	
 	public Trace(){
 		this("",null);
@@ -172,5 +179,23 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 	}
 	public static Integer getDecrementVersionId(){
 		return vIdMgnt.getAndDecrement();
+	}
+
+	public Point2D[] getPoints() {
+		if(aryTracePoints == null && trace.size() > 0){
+			aryTracePoints = new Point2D[trace.size()];
+			
+			int i = 0;
+	        for(Point pt: trace){
+	        	aryTracePoints[i] = new Point2D.Double(pt.getLon(), pt.getLat());
+	        	i++;
+	        }
+	        this.setPoints(aryTracePoints);
+		}
+		return aryTracePoints;
+	}
+
+	public void setPoints(Point2D[] aryTracePoints) {		
+		this.aryTracePoints = aryTracePoints;
 	}	
 }

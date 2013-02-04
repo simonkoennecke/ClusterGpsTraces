@@ -27,13 +27,14 @@ import trace.TrcOp;
 
 public class ControlPanel extends JPanel{
 	private static final long serialVersionUID = 7468863540376385070L;
-	private int w = 1024, h = 800;
-	private Dimension dimLfPanel;
-	private Dimension dimRtPanel;
-	private Dimension dimComponent;
-	private static int tabBorder = 20;
 	
-	private static int sizeRtPanel = 270;
+	private JFrame jf;
+	
+	private int w = 1024, h = 800;
+	
+	private Dimension dimLfPanel, dimRtPanel, dimComponent;
+	
+	private static int tabBorder = 20, sizeRtPanel = 270;
 	
 	private JPanel rtPanel = new JPanel(), lftPanel = new JPanel();
 	
@@ -45,12 +46,7 @@ public class ControlPanel extends JPanel{
 	
 	private JTree tree;
 	
-	/**
-	 * 0. 
-	 * 1. 
-	 * 2.
-	 */
-	private static int noOfFields = 6;
+	private static int noOfFields = 8;
 	private JTextField txtFields[] = new JTextField[noOfFields];
 	
 	private JButton btnList[] = new JButton[noOfFields];
@@ -62,9 +58,9 @@ public class ControlPanel extends JPanel{
 	private GpxFile gpx;
 	
 	  // constructor
-	public ControlPanel(GpxFile _gpx) {
+	public ControlPanel(JFrame _jf, GpxFile _gpx) {
 		gpx = _gpx;
-		
+		jf = _jf;
 		dimLfPanel = new Dimension(w-sizeRtPanel-20,h-30);
 		dimRtPanel = new Dimension(sizeRtPanel,h);
 		dimComponent = new Dimension(sizeRtPanel-40, 20);
@@ -168,6 +164,10 @@ public class ControlPanel extends JPanel{
 		rtPanel.setOpaque(false);
 	    //rtPanel.setLayout(new BoxLayout(rtPanel, BoxLayout.));
 	    
+		int index = 0;
+        createBtn(index, "Load GPX File", "loadFile");
+        
+		
 	    JLabel jl = new JLabel("Parameter setzen");
 	    rtPanel.add(jl);
 	    
@@ -175,7 +175,7 @@ public class ControlPanel extends JPanel{
         JScrollPane treeView = new JScrollPane(tree);
         treeView.setPreferredSize(new Dimension(dimComponent.width, 300));
         rtPanel.add(treeView);
-        int index = 0;
+        //index = 0
         createTxtField(index, "Fläche verkleinern [Grad]:", "0.0004");
         createBtn(index, "Resize Plane", "resizePlain");
         index++;
@@ -185,17 +185,21 @@ public class ControlPanel extends JPanel{
         createBtn(index, "Split after the Distance", "splitTraceAfterDistance");
         index++;
         //index = 2
-        createTxtField(index,"Toleranz für Polylinen-Vereinfachnung  [Meter]:", "2000");
-        createBtn(index, "Simplify Traces", "simplifyTraces");
+        createTxtField(index,"Vereinfachnungstoleranz:", "200");
+        createBtn(index, "Simplify Traces", "simplifyTraces");        
         index++;
         //index = 3
         createTxtField(index,"Anzahl der Cluster:", "5");
         createBtn(index, "Cluster Traces", "clusterTraces");
         index++;
         //index = 4
-        createBtn(index, "Redraw Traces", "redrawTraces");
+        createTxtField(index,"Zerlegungstoleranz:", "500");
+        createBtn(index, "Split Traces", "splitTraceByDouglasPeucker");
         index++;
         //index = 5
+        createBtn(index, "Redraw Traces", "redrawTraces");
+        index++;
+        //index = 6
         createBtn(index, "Redo", "redo");
         
         
@@ -264,7 +268,7 @@ public class ControlPanel extends JPanel{
 				getTraces(t.getSubTraces(),store);
 				continue;
 			}
-			if(t.size() <= 2)
+			if(t.size() < 2)
 				continue;
 			store.addTrace(t);
 		}
@@ -273,13 +277,45 @@ public class ControlPanel extends JPanel{
 	private class ConfigMouseListener implements MouseListener{
 		@Override
 		public void mouseClicked(MouseEvent arg0) {
-			if(arg0.getComponent().getName() == "simplifyTraces"){
+			long cntDispTraces = gpx.getTraces().countDisplayedTraces();
+			long cntDispPoints = gpx.getTraces().countPoints();
+			
+			if(arg0.getComponent().getName() == "loadFile"){
+				Debug.syso("Load new File");
+				FileDialog dlg=null;
+
+				dlg=new FileDialog(jf,"Select File to Load",FileDialog.LOAD);
+				dlg.setFile("*.gpx");
+				dlg.setVisible(true);
+				String filename = dlg.getDirectory() + dlg.getFile();
+				
+				if (filename != null) {
+					Debug.syso("Lade GPX-Datei: " + filename + ".");
+					try{
+						gpx = new GpxFile(filename);
+						reloadTree();
+						graph.setGpxFile(gpx);
+						Debug.syso(filename);
+					}
+					catch (Exception e) {
+						Debug.syso("Fehler beim Laden der neuen GPX-Datei.");
+					}
+				}		        
+			}
+			else if(arg0.getComponent().getName() == "simplifyTraces"){
 				double tol = Double.valueOf(txtFields[2].getText());
 				TrcOp.reduction(gpx.getTraces(), tol);
 				Debug.syso("Reduce Points on Traces");
 				reloadTree();
 				graph.redraw();
 			}
+			else if(arg0.getComponent().getName() == "splitTraceByDouglasPeucker"){
+				double tol = Double.valueOf(txtFields[4].getText());
+				TrcOp.splitTraceByDouglasPeucker(gpx.getTraces(), tol);
+				Debug.syso("Splite Trace with Douglas Peucker");
+				reloadTree();
+				graph.redraw();
+			}			
 			else if(arg0.getComponent().getName() == "resizePlain"){
 				double tol = Double.valueOf(txtFields[0].getText());
 				TrcOp.resizePlain(gpx.getTraces(), tol);
@@ -323,6 +359,8 @@ public class ControlPanel extends JPanel{
 			else{
 				System.out.println("Event: " + arg0.getComponent().getName());
 			}
+			Debug.syso("Displayed Traces before " + cntDispTraces + " with " + cntDispPoints + " Points");
+			Debug.syso("Displayed Traces after " + gpx.getTraces().countDisplayedTraces() + " with " + gpx.getTraces().countPoints() + " Points");
 		}
 		@Override
 		public void mouseEntered(MouseEvent e) {

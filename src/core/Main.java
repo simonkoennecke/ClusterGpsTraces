@@ -24,8 +24,8 @@ public class Main {
 	  	    jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	  	 
 	  	    // You add things to the contentPane in a JFrame
-	  	    jf.getContentPane().add(new ControlPanel(gpx));
-	  	 
+	  	    jf.getContentPane().add(new ControlPanel(jf, gpx));
+	  	  
 	  	    // keep window from being resized
 	  	    jf.setResizable(true);
 	  	 

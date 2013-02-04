@@ -65,23 +65,31 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 		return minPt;
 	}
 	
-	public int countPoints(){
+	public long countPoints(){
+		return countPoints(this);
+	}
+	public long countPoints(Traces traces){
 		int cnt=0;
-		for(Trace t : this){
+		for(Trace t : traces){
+			if(t.getSubTraces().size() > 0){
+				cnt += countPoints(t.getSubTraces());
+				continue;
+			}
 			cnt += t.size();
 		}
 		return cnt;
 	}
-	public double countDisplayedTraces(){
-		return countDisplayedTraces(this, 0);
+	public long countDisplayedTraces(){
+		return countDisplayedTraces(this);
 	}
-	private double countDisplayedTraces(Traces traces,double cnt){
+	private long countDisplayedTraces(Traces traces){
+		long cnt = 0;
 		for(Trace t : traces){
 			if(t.getSubTraces().size() == 0){
 				cnt += 1;
 			}
 			else{
-				cnt += countDisplayedTraces(t.getSubTraces(),cnt);
+				cnt += countDisplayedTraces(t.getSubTraces());
 			}
 		}
 		return cnt;

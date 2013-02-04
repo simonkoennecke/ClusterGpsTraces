@@ -1,5 +1,8 @@
 package trace;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import core.Debug;
 import graph.GpxFile;
 
@@ -14,7 +17,7 @@ public class TrcOp {
 		double dist=0;//,avgDist=0;
 		Trace crtTrace = null;
 		Integer _vId;
-		System.out.println("Anzahl der Traces: " + traces.size());
+		//System.out.println("Anzahl der Traces: " + traces.size());
 		
 		for(Trace t : traces){
 			//Wurde der Pfad schon mal zerlegt?
@@ -181,12 +184,12 @@ public class TrcOp {
 	 * Dabei wird geprüft, ob der mittlere Punkt zwischen den ersten und letzten Punkt nicht außerhalb der Toleranz liegt.
 	 * Sollte es außerhalb der Toleranz liegen wird der mittlere Punkt mit aufgenommen und das gleiche verfahren wird zwischen
 	 * ersten und mittleren wie mittleren und letzten angewendet.
-	 * @param traces
+	 * @param trace
 	 * @param tol
 	 */
-	public static void reduction(Traces traces, double tol){
+	public static void reduction(Traces trace, double tol){
 		Integer vId = Trace.getIncrementVersionId(); 
-		reduction(traces, tol, vId);
+		reduction(trace, tol, vId);
 	}
 	public static void reduction(Traces traces, double tol, Integer vId){		
 		for(Trace t: traces){
@@ -206,13 +209,13 @@ public class TrcOp {
 		}
 	}
 	/**
-	 * 
+	 * Diese Funktion wird direkt von K-Means verwendet.
 	 * @param Points
 	 * @param Tolerance
 	 * @param vId
 	 * @return
 	 */
-	private  static Trace DouglasPeuckerReduction(Trace Points, double Tolerance, Integer vId){
+	public static Trace DouglasPeuckerReduction(Trace Points, double Tolerance, Integer vId){
 	    if (Points == null || Points.size() < 3)
 	    return null;
 	
@@ -245,12 +248,12 @@ public class TrcOp {
 	private static void DouglasPeuckerReduction(Trace points, int firstPoint, int lastPoint, double tolerance, 
 	    Trace pointIndexsToKeep)
 	{
-	    double maxDistance = 0;
+	    double maxDistance = 0, distance = Double.MIN_VALUE;
 	    int indexFarthest = 0;
 	    
 	    //Wähle den entferntesten Punkt von der Strecke p1 und p2
 	    for (int index = firstPoint; index < lastPoint; index++){
-	        double distance = Math.abs(PtOpPlane.alongTrackDist(points.get(firstPoint), points.get(lastPoint), points.get(index)));
+	        distance = Math.abs(PtOpPlane.alongTrackDist(points.get(firstPoint), points.get(lastPoint), points.get(index)));
 	        if (distance > maxDistance) {
 	            maxDistance = distance;
 	            indexFarthest = index;
@@ -264,9 +267,83 @@ public class TrcOp {
 	        DouglasPeuckerReduction(points, indexFarthest, lastPoint, tolerance, pointIndexsToKeep);
 	    }
 	}
-	
+
+	/**
+	 * Diese Funktion schneidet GPS Spuren, wenn eine zu große Distanz zwischen anfangs und end Punkt besteht.
+	 * Es werden keine Punkte gelöscht. Alle Subspuren fangen mit den Endpunkt der vorherigen Spur an. 
+	 * @param traces
+	 * @param tol
+	 * @param vId
+	 */
+	public static void splitTraceByDouglasPeucker(Traces traces, double tol){
+		Integer vId = Trace.getIncrementVersionId();		
+		splitTraceByDouglasPeucker(traces,tol,vId);
+	}
+	public static void splitTraceByDouglasPeucker(Traces traces, double tol, Integer vId){
+		for(Trace t: traces){
+			if(t.getSubTraces().size() > 0){
+				splitTraceByDouglasPeucker(t.getSubTraces(), tol, vId);				
+				continue;
+			}
+			List<Integer> list = new LinkedList<Integer>();
+			//Ermittel alle Schnittpunkte von der Spur
+			splitWithDouglasPeucker(list, t, 0, t.size()-1, tol);
+			
+			//Gibt es mehr als ein Schnittpunkt 
+			if(list.size() > 0){
+				//Alle Schnittpunkte sollen in ein separate "SubTrace"
+				Trace tmpTrace = t.addSubTraces(vId);
+				int i = 0, splitListIndex = 0;
+				int splitTraceById = list.get(splitListIndex++);
+				
+				for(Point pt : t){
+					tmpTrace.addPoint(pt);
+					//Der Schnittpunkt ist erreicht erstelle ein neuen "SubTrace"
+					if(splitTraceById == i){						
+						tmpTrace = t.addSubTraces(vId);
+						tmpTrace.addPoint(pt);
+						//Wechsel die Schnittstelle, wenn es noch welche gibt.
+						if(splitTraceById <= list.size()-1)
+							splitTraceById = list.get(splitListIndex++);
+					}
+					i++;
+				}
+			}
+		}
+	}	
+	/**
+	 * Diese Helferfunktion stellt fest welche Punkte aus der Reihe tanzen und speichert die in eine Liste ab.
+	 * @param list Speicher für die Ausreißer Index in geordneter Folge
+	 * @param points Der Trace der gerade inspiziert wird
+	 * @param firstPoint Der Startpunkt ab den untersucht wird
+	 * @param lastPoint Der Endpunkt bis wohin untersucht wird
+	 * @param tolerance Die Toleranz ab wann eine Spur an den Punkt zerlegt wird
+	 */
+	public static void splitWithDouglasPeucker(List<Integer> list, Trace points, Integer firstPoint, Integer lastPoint, double tolerance){
+	    if (points != null && points.size() > 2){
+		    double maxDistance = 0, distance = Double.MIN_VALUE;
+		    int indexFarthest = 0;
+		    
+		    for (int index = firstPoint; index < lastPoint; index++){
+		        distance = Math.abs(PtOpPlane.alongTrackDist(points.get(firstPoint), points.get(lastPoint), points.get(index)));
+		        if (distance > maxDistance) {
+		            maxDistance = distance;
+		            indexFarthest = index;
+		        }
+		    }
+		    
+		    if (maxDistance > tolerance && indexFarthest != 0){
+		        //Add the largest point that exceeds the tolerance
+		    	splitWithDouglasPeucker(list, points, firstPoint, indexFarthest, tolerance);
+		    	list.add(indexFarthest);
+		    	splitWithDouglasPeucker(list, points, indexFarthest, lastPoint, tolerance);
+		    }
+	    }
+	}
 	/**
 	 * Schneidet alle Punkte ab die außerhalb von der min - tol und max - tol liegt, x wie y Koordinaten.
+	 * @param traces Die Spuren die auf der Fläche sind
+	 * @param tol Der Faktor zu Verkleinerung von der Fläche
 	 */
 	public static void resizePlain(Traces traces, double tol){
 		traces.calcExtrema();
@@ -334,9 +411,7 @@ public class TrcOp {
 	 * @param traces Das Bündel von Traces von dem die vorherige Version wiederhergestellt werden soll.
 	 */
 	public static void redo(GpxFile file){
-		Debug.syso("Displayed Traces before redo: " + file.getTraces().countDisplayedTraces());
-		redo(file.getTraces(), Trace.getDecrementVersionId()-1);
-		Debug.syso("Displayed Traces after redo: " + file.getTraces().countDisplayedTraces());
+		redo(file.getTraces(), Trace.getDecrementVersionId()-1);		
 	}
 	/**
 	 * Löscht den Vorgang X
