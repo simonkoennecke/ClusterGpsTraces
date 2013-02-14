@@ -1,7 +1,12 @@
 package merg;
 
+import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
+
+import com.vividsolutions.jts.algorithm.LineIntersector;
 
 import trace.*;
 
@@ -13,7 +18,7 @@ public class Grid {
 	/**
 	 * Die Datenstruktur für das Grid
 	 */
-	private HashMap<Integer, GridRow> grid;
+	private HashMap<Integer, GridRow> grid = new HashMap<Integer, GridRow>();
 	/**
 	 * Anzahl der Spalten und Zeilen des Gitters
 	 */
@@ -25,39 +30,54 @@ public class Grid {
 	/**
 	 * Welche Kachelung das Grid hat auf basis der Traces
 	 */
-	private Double cRaster , rRaster;
-	/**
-	 * Welche Kachelung das Grid hat auf basis der Traces
-	 */
 	private Double lonRaster , latRaster;
 	/**
 	 *  
 	 */
 	private Trace meanTrace, upperDeviation, lowerDeviation;
 	/**
-	 * 
-	 * @param t
-	 * @param r
-	 * @param c
+	 * Das Gitter erzeugen ohne Angabe welche Punkte eingefügt werden.
+	 * @param r Anzahl der Zeilen
+	 * @param c Anzahl der Spalten
+	 */
+	public Grid(Integer r, Integer c){
+		this.r = r;
+		this.c = c;
+	}
+	
+	/**
+	 * Sollte das Gitter auf Traces aufbauen, wir automatisch alles erzeugt.
+	 * @param t Traces die in diesem Grid zu finden sind
+	 * @param r Anzahl der Zeilen
+	 * @param c Anzahl der Spalten
 	 */
 	public Grid(Traces t, Integer r, Integer c){
 		this.t = t;
 		this.r = r;
 		this.c = c;
-		grid = new HashMap<Integer, GridRow>();
 		
 		t.calcExtrema();
 		maxPt = t.getMax();
 		minPt = t.getMin();
-		cRaster = (maxPt.getX() - minPt.getX()) / c;
-		rRaster = (maxPt.getY() - minPt.getY()) / r;
-		
-		lonRaster = (maxPt.getLon() - minPt.getLon()) / c;
-		latRaster = (maxPt.getLat() - minPt.getLat()) / r;
-		
+		setup();
 		addTraces(t);
 	}
-	
+	public void setMaxPt(Point maxPt){
+		this.maxPt = maxPt;
+	}
+	public void setMinPt(Point minPt){
+		this.minPt = minPt;
+	}
+	public void setup(){
+		lonRaster = (maxPt.getLon() - minPt.getLon()) / r;
+		latRaster = (maxPt.getLat() - minPt.getLat()) / c;
+	}
+	public int getRowNo(){
+		return r;
+	}
+	public int getColumnNo(){
+		return c;
+	}
 	public void addTraces(Traces traceList){
 		for(Trace t: traceList){
 			if(t.getSubTraces().size()>0){
@@ -76,6 +96,7 @@ public class Grid {
 			p1 = p2;
 		}
 	}
+	
 	/**
 	 * Fügt die Kante zum Raster hinzu. Dafür werden alle Punkte, die die Kante beschreibt
 	 * in dem Raster erzeugt und hinzugefügt
@@ -85,11 +106,24 @@ public class Grid {
 	 */
 	public void addEdge(Trace t, Point p1, Point p2){
 		//Füge den Anfangspunkt hinzu.
-		int[] start = calcPointGridCoordinats(t, p1);
-		int[] end	= calcPointGridCoordinats(t, p2);
+		int[] start = calcPointGridCoordinats(p1);
+		int[] end	= calcPointGridCoordinats(p2);
 		
 		int[] step = getDirection(start, end);
 		
+		for(int x=start[0];x<end[0];x += step[0]){
+			for(int y=start[1];y<end[1];y += step[1]){
+				//Obere linke Ecke
+				double top[] = {x*latRaster, y*lonRaster};
+				//untere rechte Ecke
+				double buttom[] = {(x+1)*latRaster, (y+1)*lonRaster};
+				if(Geometry.isLineIntersectingRectangle(p1.getLat(), p1.getLon(), p2.getLat(), p2.getLon(), top[0], top[1], buttom[0], buttom[1])){
+					addPoint(t, x, y, new Point(minPt.getLon() + x * lonRaster, minPt.getLon() + y * lonRaster));
+				}
+			}
+		}
+		
+		/*
 		//Liegt start und end Punkt mindestens zwei Zellen entfernt?
 		if(dist(start,end) > 1){
 			int x = start[0], y=start[1];
@@ -114,6 +148,7 @@ public class Grid {
 				addPoint(t, x, y, new Point(p1.getLon() + x * lonRaster, p1.getLon() + y * latRaster));
 			}
 		}
+		*/
 	}
 
 	/**
@@ -196,16 +231,20 @@ public class Grid {
 		
 	}
 	
-	public int[] calcPointGridCoordinats(Trace t, Point pt){
+	public int[] calcPointGridCoordinats(Point pt){
 		int iR,iC; // insert in Row- or Column- Id
-		//iR = (int) Math.floor((pt.getY() - minPt.getY()) / rRaster);
-		//iC = (int) Math.floor((pt.getX() - minPt.getX()) / cRaster);
-		iR = (int) Math.floor((pt.getLat() - minPt.getLat()) / latRaster);
-		iC = (int) Math.floor((pt.getLon() - minPt.getLon()) / lonRaster);
+		iC = (int) Math.floor((pt.getLat() - minPt.getLat()) / latRaster);
+		iR = (int) Math.floor((pt.getLon() - minPt.getLon()) / lonRaster);
 		return new int[]{iC,iR};
 	}
-	
-	public void addPoint(Trace t, int iC, int iR, Point pt){
+	/**
+	 * Füge ein Punkt hinzu mit bekannten Indices für Spalte und Zeile
+	 * @param t
+	 * @param iC
+	 * @param iR
+	 * @param pt
+	 */
+	private void addPoint(Trace t, int iC, int iR, Point pt){
 		if(grid.containsKey(iC)){
 			grid.get(iC).add(iR, t, pt);
 		}
@@ -216,13 +255,22 @@ public class Grid {
 		//return new int[]{iC,iR};
 	}
 	/**
+	 * Füge einen Punkt ins Grid ein.
+	 * @param t Der Trace nur als Referenz
+	 * @param pt Der Punkt der Hinzugefügt wird
+	 */
+	public void addPoint(Trace t, Point pt){
+		int[] cell = calcPointGridCoordinats(pt);
+		addPoint(t, cell[0], cell[1], pt);
+	}
+	/**
 	 * Liefert die Zeile zurück.
 	 * @param column Die Spaltennummer die erfragt wird
 	 * @return GridRow mit den Häufigkeiten, wie viele Punkte in der jeweiligen Zeile liegen
 	 */
-	public GridRow getRow(int column){
-		if(grid.containsKey(column))
-			return grid.get(column);
+	public GridRow getRow(int colNo){
+		if(grid.containsKey(colNo))
+			return grid.get(colNo);
 		else
 			return null;
 	}

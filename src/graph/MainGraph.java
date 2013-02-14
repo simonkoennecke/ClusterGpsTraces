@@ -1,5 +1,7 @@
 package graph;
 
+import java.util.List;
+
 import cluster.Cluster;
 import processing.core.*;
 import trace.*;
@@ -24,6 +26,9 @@ public class MainGraph extends PApplet {
 	private enum paintModeOption {Traces, Cluster};
 	
 	private paintModeOption paintMode = paintModeOption.Traces;
+	
+	private boolean paintIntersections = false;
+	private List<Point> intersections;
 	
 	public MainGraph(GpxFile _gpx, int w, int h){
 		gpx = _gpx;
@@ -87,13 +92,26 @@ public class MainGraph extends PApplet {
 		paintMode = paintModeOption.Cluster;
 		
 	}
+	public void setIntersections(List<Point> c){
+		intersections = c;
+		paintIntersections = true;		
+	}
+	public List<Point> getIntersections(){
+		return intersections;		
+	}
 	public void draw() {
 		background(255);
 		if(paintMode == paintModeOption.Traces)
 			new DrawTraces(this, gpx).draw();
 		else if(paintMode == paintModeOption.Cluster)
 			new DrawCluster(this, cluster).draw();
-		
+		if(paintIntersections){
+			this.stroke(this.color(0,0,0,255));
+			this.fill(this.color(255,0,255));
+			for(Point p1 : intersections)
+				this.rect(this.lon(p1), this.lat(p1), 2, 2);
+		}
+			
 		//stroke(color(255,0,0));
 	}
 }

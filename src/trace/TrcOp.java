@@ -1,7 +1,12 @@
 package trace;
 
+import java.awt.geom.Point2D;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import cluster.AtomicStack;
 
 import core.Debug;
 import graph.GpxFile;
@@ -285,7 +290,7 @@ public class TrcOp {
 				splitTraceByDouglasPeucker(t.getSubTraces(), tol, vId);				
 				continue;
 			}
-			List<Integer> list = new LinkedList<Integer>();
+			Queue<Integer> list = new LinkedList<Integer>();
 			//Ermittel alle Schnittpunkte von der Spur
 			splitWithDouglasPeucker(list, t, 0, t.size()-1, tol);
 			
@@ -293,8 +298,7 @@ public class TrcOp {
 			if(list.size() > 0){
 				//Alle Schnittpunkte sollen in ein separate "SubTrace"
 				Trace tmpTrace = t.addSubTraces(vId);
-				int i = 0, splitListIndex = 0;
-				int splitTraceById = list.get(splitListIndex++);
+				int i = 0, splitTraceById = list.poll();
 				
 				for(Point pt : t){
 					tmpTrace.addPoint(pt);
@@ -303,8 +307,9 @@ public class TrcOp {
 						tmpTrace = t.addSubTraces(vId);
 						tmpTrace.addPoint(pt);
 						//Wechsel die Schnittstelle, wenn es noch welche gibt.
-						if(splitTraceById <= list.size()-1)
-							splitTraceById = list.get(splitListIndex++);
+						if(list.size() > 0){
+							splitTraceById = list.poll();							
+						}
 					}
 					i++;
 				}
@@ -319,7 +324,7 @@ public class TrcOp {
 	 * @param lastPoint Der Endpunkt bis wohin untersucht wird
 	 * @param tolerance Die Toleranz ab wann eine Spur an den Punkt zerlegt wird
 	 */
-	public static void splitWithDouglasPeucker(List<Integer> list, Trace points, Integer firstPoint, Integer lastPoint, double tolerance){
+	public static void splitWithDouglasPeucker(Queue<Integer> list, Trace points, Integer firstPoint, Integer lastPoint, double tolerance){
 	    if (points != null && points.size() > 2){
 		    double maxDistance = 0, distance = Double.MIN_VALUE;
 		    int indexFarthest = 0;
@@ -404,6 +409,115 @@ public class TrcOp {
 				if(tmp.size() > 0)
 					t.addSubTraces(tmp);
 			}
+		}
+	}
+	
+	public static List<Point> getIntersections(Traces _t){
+		//Integer vId = Trace.getIncrementVersionId();
+		Traces t = getTraces(_t);
+		Debug.syso("Start " + t.countDisplayedTraces() + " with " + t.countPoints() + " Points");
+		/*
+		//Alle Kanten bekommen einen eigenen Trace:
+		Traces edges = new Traces();
+		for(Trace trace : t){
+			getAllEdges(edges, trace, vId);
+		}
+		Debug.syso("Edges " + edges.countDisplayedTraces() + " with " + edges.countPoints() + " Points");
+		*/
+		//Ermittelt alle Schnittpunkte:
+		//Alle zu berechnende Paar auflisten
+		List<Point> intersections = new LinkedList<Point>();
+		//AtomicStack stack = new AtomicStack();
+		//AtomicInteger stackCounter = new AtomicInteger();
+		for(int i=0; i < t.size(); i++){
+			for(int s=i+1; s < t.size(); s++){
+				if(i != s)
+					edgeIntersect(intersections, t.get(i), t.get(s));
+				//stack.push(i, s);
+				//stackCounter.incrementAndGet();
+				
+			}
+		}
+		/*
+		Debug.syso("Es müssen " + stackCounter.get() + " intersections berechnet werden.");
+		while(stack.empty()){
+			int[] calc = stack.pop();
+			edgeIntersect(intersections, edges.get(calc[0]), edges.get(calc[1]));
+			stackCounter.decrementAndGet();
+		}
+		*/
+		return intersections;
+		
+	}
+	private static void edgeIntersect(List<Point> intersections, Trace t1, Trace t2){
+		Point2D[] p1 = t1.getPoints();
+		Point2D[] p2 = t2.getPoints();
+		
+		for(int i=0; i < (p1.length-2); i++){
+			for(int s=0; s < (p2.length-2); s++){
+				isEdgeIntersectEdge(intersections, p1, p2, i, s);
+			}			
+		}
+	}
+	private static void isEdgeIntersectEdge(List<Point> intersections, Point2D[] p1, Point2D[] p2, int p1Index, int p2Index){
+		double[] coordiants = new double[2];
+		//Überschneiden die beiden Kanten sich überhaupt?
+		int isIntersect = Geometry.findLineSegmentIntersection(p1[p1Index].getX(), p1[p1Index].getY(), p1[p1Index+1].getX(), p1[p1Index+1].getY(), 
+							p2[p2Index].getX(), p2[p2Index].getY(), p2[p2Index+1].getX(), p2[p2Index+1].getY(), coordiants);
+		if(isIntersect == 1){
+			//Ja, es liegt eine Überschneidung vor
+			intersections.add(new Point(coordiants[0], coordiants[1]));
+		}
+	}
+	private static boolean samePoints(Point2D[] p1, Point2D[] p2){
+		if(p1[1].getX() == p2[0].getX() && p1[1].getY() == p2[0].getY())
+			return true;
+		else
+			return false;
+	}
+	private static void getAllEdges(Traces edges, Trace t, Integer vId){
+		Point p1=null,p2=null;		
+		for(Point pt : t){			
+			if(p1 == null){
+				p1 = pt;
+				continue;
+			}
+			else if(p2 == null){
+				p2 = pt;
+			}
+			else{
+				p1 = p2;
+				p2 = pt;
+			}
+			Trace tmp = edges.addTrace("Edge " + vId, vId);
+			tmp.addPoint(p1);
+			tmp.addPoint(p2);			
+		}
+	}
+	/**
+	 * Ermittelt alle zu clusterene Traces.
+	 * @param t Die Traces nach dem vereinfachen.
+	 * @return liefert in einem "Traces" alle zu clusteren Traces
+	 */
+	public static Traces getTraces(Traces t){
+		Traces tmp = new Traces();
+		getTraces(t, tmp);
+		return tmp;
+	}
+	/**
+	 * Helfer Funktion von getTraces(Traces t)
+	 * @param _t siehe Hauptfunktion
+	 * @param store hier werden alle Traces in einer Ebene gespeichert, die geclustert werden sollen.
+	 */
+	private static void getTraces(Traces _t, Traces store){
+		for(Trace t : _t){		  
+			if(t.getSubTraces().size()>0){
+				getTraces(t.getSubTraces(),store);
+				continue;
+			}
+			if(t.size() < 2)
+				continue;
+			store.addTrace(t);
 		}
 	}
 	/**

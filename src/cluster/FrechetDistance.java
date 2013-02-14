@@ -5,7 +5,6 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import trace.Point;
 import trace.Trace;
 
 import com.vividsolutions.jts.geom.Coordinate;

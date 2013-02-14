@@ -115,6 +115,7 @@ public class ControlPanel extends JPanel{
 		rtPanel.setPreferredSize(dimRtPanel);		
 		
 	}
+	private JComponent tabPanel[] = new JComponent[3];
 	private void lftPanel(){
 		tabbedPanel = new JTabbedPane();
 		
@@ -126,21 +127,20 @@ public class ControlPanel extends JPanel{
 	    
 		ImageIcon icon = null;
          
-        JComponent panel1 = makeTextPanel("Panel #1");
-        tabbedPanel.addTab("View all Traces", icon, graph, "Does nothing");
+        tabbedPanel.addTab("Map", icon, graph, "Does nothing");
         tabbedPanel.setMnemonicAt(0, KeyEvent.VK_1);
          
-        JComponent panel2 = makeTextPanel("Panel #2");
-        tabbedPanel.addTab("Tab 2", icon, panel2, "Does twice as much nothing");
+        tabPanel[0] = makeTextPanel("Panel #2");
+        tabbedPanel.addTab("Distribution", icon, tabPanel[0], "Does twice as much nothing");
         tabbedPanel.setMnemonicAt(1, KeyEvent.VK_2);
          
-        JComponent panel3 = makeTextPanel("Panel #3");
-        tabbedPanel.addTab("Tab 3", icon, panel3, "Still does nothing");
+        tabPanel[1] = makeTextPanel("Panel #3");
+        tabbedPanel.addTab("Tab 3", icon, tabPanel[1], "Still does nothing");
         tabbedPanel.setMnemonicAt(2, KeyEvent.VK_3);
          
-        JComponent panel4 = makeTextPanel("Panel #4 (has a preferred size of 410 x 50).");
-        panel4.setPreferredSize(new Dimension(410, 50));
-        tabbedPanel.addTab("Tab 4", icon, panel4, "Does nothing at all");
+        tabPanel[2] = makeTextPanel("Panel #4 (has a preferred size of 410 x 50).");
+        tabPanel[2].setPreferredSize(new Dimension(410, 50));
+        tabbedPanel.addTab("Tab 4", icon, tabPanel[2], "Does nothing at all");
         tabbedPanel.setMnemonicAt(3, KeyEvent.VK_4);
          
         //Add the tabbed pane to this panel.
@@ -247,32 +247,7 @@ public class ControlPanel extends JPanel{
 		tree.setVisible(true);
 		//tree.setViewportView(taskDataTree);
 	}
-	/**
-	 * Ermittelt alle zu clusterene Traces.
-	 * @param t Die Traces nach dem vereinfachen.
-	 * @return liefert in einem "Traces" alle zu clusteren Traces
-	 */
-	private Traces getTraces(Traces t){
-		Traces tmp = new Traces();
-		getTraces(t, tmp);
-		return tmp;
-	}
-	/**
-	 * Helfer Funktion von getTraces(Traces t)
-	 * @param _t siehe Hauptfunktion
-	 * @param store hier werden alle Traces in einer Ebene gespeichert, die geclustert werden sollen.
-	 */
-	private void getTraces(Traces _t, Traces store){
-		for(Trace t : _t){		  
-			if(t.getSubTraces().size()>0){
-				getTraces(t.getSubTraces(),store);
-				continue;
-			}
-			if(t.size() < 2)
-				continue;
-			store.addTrace(t);
-		}
-	}
+	
 	
 	private class ConfigMouseListener implements MouseListener{
 		@Override
@@ -338,12 +313,14 @@ public class ControlPanel extends JPanel{
 				graph.redraw();
 			}			
 			else if(arg0.getComponent().getName() == "redrawTraces"){
-				graph.redraw();			
+				//if(graph.getIntersections() == null)
+					graph.setIntersections(TrcOp.getIntersections(gpx.getTraces()));
+				graph.redraw();
 		        Debug.syso("Repaint");
 			}
 			else if(arg0.getComponent().getName() == "clusterTraces"){
 				Debug.syso("Cluster");
-				Traces tmp = getTraces(gpx.getTraces());
+				Traces tmp = TrcOp.getTraces(gpx.getTraces());
 				int k = Integer.valueOf(txtFields[3].getText());
 				ClusterTraces cltr = new KMeans(k, tmp);
 				cltr.run();

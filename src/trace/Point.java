@@ -52,7 +52,7 @@ public class Point implements Comparable<Point>{
 		return tmp;
 	}
 	public String toString(){
-		return "(Lon,Lat) ("+_lon+", "+_lat+") (x,y) ("+_x+", "+_y+") ";
+		return "(Lon: "+_lon+", Lat: "+_lat+")";
 	}
 	public double getX() {
 		return _x;
