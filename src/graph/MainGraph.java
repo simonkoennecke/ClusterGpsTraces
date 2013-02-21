@@ -28,7 +28,7 @@ public class MainGraph extends PApplet {
 	private paintModeOption paintMode = paintModeOption.Traces;
 	
 	private boolean paintIntersections = false;
-	private List<Point> intersections;
+	private List<FindTraceIntersections.Circle> intersections;
 	
 	public MainGraph(GpxFile _gpx, int w, int h){
 		gpx = _gpx;
@@ -92,11 +92,11 @@ public class MainGraph extends PApplet {
 		paintMode = paintModeOption.Cluster;
 		
 	}
-	public void setIntersections(List<Point> c){
+	public void setIntersections(List<FindTraceIntersections.Circle> c){
 		intersections = c;
 		paintIntersections = true;		
 	}
-	public List<Point> getIntersections(){
+	public List<FindTraceIntersections.Circle> getIntersections(){
 		return intersections;		
 	}
 	public void draw() {
@@ -105,13 +105,31 @@ public class MainGraph extends PApplet {
 			new DrawTraces(this, gpx).draw();
 		else if(paintMode == paintModeOption.Cluster)
 			new DrawCluster(this, cluster).draw();
+		
 		if(paintIntersections){
-			this.stroke(this.color(0,0,0,255));
+			this.ellipseMode(CENTER);
+			strokeWeight(3);
+			this.stroke(this.color(255,0,0,255));
 			this.fill(this.color(255,0,255));
-			for(Point p1 : intersections)
-				this.rect(this.lon(p1), this.lat(p1), 2, 2);
+			this.noFill();
+			for(FindTraceIntersections.Circle c : intersections){
+				if(!c.isOverlapping){
+					float d = (float) (this.lon(new Point(c.pt.getLon()-c.r, c.pt.getLat())) - this.lon(new Point(c.pt.getLon()+c.r, c.pt.getLat())));
+					d = Math.abs(d);
+					d = d * 0.5f;
+					this.ellipse(this.lon(c.pt), this.lat(c.pt), d,d);
+				}
+			}
+			strokeWeight(1);
+			this.stroke(this.color(0,0,0,255));
+			this.fill(this.color(255,0,0));
+			for(FindTraceIntersections.Circle c : intersections){
+				if(c.isOverlapping){
+					this.ellipse(this.lon(c.pt), this.lat(c.pt), 3,3);
+				}
+			}
 		}
-			
+		
 		//stroke(color(255,0,0));
 	}
 }

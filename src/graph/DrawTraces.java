@@ -57,24 +57,39 @@ public class DrawTraces {
 	}
 	public void draw(){
 		draw(gpx.getTraces());
+		drawStartAndEndPointFromTrace(gpx.getTraces());
 	}
 	public void draw(Traces traces){
-		//System.out.println("Trace Color: " + lineColor);
-		//int cntPoints = traces.countPoints();
-		//int avgPointsOnTrace = cntPoints / traces.size();
-		
-		//System.out.println("avgPointsOnTrace: " + avgPointsOnTrace + ", Max Point" + maxPt + ", Min Point" + minPt);
-	  
-	  	
+		//Alle Spuren ziechen
 		for(Trace t : traces){		  
 			if(t.getSubTraces().size()>0){
 				this.draw(t.getSubTraces());
 				continue;
 			}
-			if(t.size() <= 2)
+			if(t.size() < 2)
 				continue;
-			//System.out.println("Trace (Number of Pt: " + t.size() + ", distance: " + t.getDistance() + ")");
-		  
+			
+			Point p1 = null;
+			
+			for(Point p2 : t){
+				if(p1 == null){
+					p1 = p2;
+					continue;
+				}
+				drawArrow(p1,p2);
+				p1=p2;
+			}
+		}
+	}
+	public void drawStartAndEndPointFromTrace(Traces traces){
+		for(Trace t : traces){		  
+			if(t.getSubTraces().size()>0){
+				this.drawStartAndEndPointFromTrace(t.getSubTraces());
+				continue;
+			}
+			if(t.size() < 2)
+				continue;
+			
 			Point p1 = t.get(0);
 			Point pn = t.get(t.size()-1);
 			int boxSize = 3;
@@ -84,19 +99,6 @@ public class DrawTraces {
 			g.fill(g.color(0,255,0));
 			g.rect(g.lon(pn), g.lat(pn), boxSize, boxSize);
 			
-			
-			int i=0;
-			for(Point pt : t){
-			  //System.out.println("Pt:" + (pt.getLat()-minPt.getLat()) * latFactor + ", " +(pt.getLon()-minPt.getLon()) * lonFactor + "");
-			  //point(lon(pt), lat(pt));
-				  double r = PtOpSphere.cardinalDirection(p1,pt);
-				  //if(i%30==0)
-					  //text(String.valueOf(Math.round(r)),lon(pt), lat(pt));
-				  drawArrow(p1,pt);
-				  p1 = pt;
-				  i++;
-			  }
-			  
-		  }
+		}
 	}
 }

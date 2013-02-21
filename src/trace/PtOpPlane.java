@@ -35,6 +35,9 @@ public class PtOpPlane {
 	public static double distance(Point p1, Point p2){
 		return Math.sqrt(Math.pow(p1.getX() - p2.getX(), 2) + Math.pow(p2.getY() - p1.getY(), 2));
 	}
+	public static double dist(Point p1, Point p2){
+		return Math.sqrt(Math.pow(p1.getLat() - p2.getLat(), 2) + Math.pow(p2.getLon() - p1.getLon(), 2));
+	}
 	
 	/**
 	 * Calculate the cardinal Direction to North

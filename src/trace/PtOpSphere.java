@@ -8,15 +8,28 @@ import java.lang.Math;
  * @author Simon
  */
 public class PtOpSphere {
-	public static double earth_radius = 6378137; //in Meter
+	public static double earth_radius = 6378137; //in Meter	
 	public static double earth_perimeter = 40000; //in Kilometer
 	/**
 	 * Calculate the angle between two points
 	 * @param p1 Point on a surface of a sphere
 	 * @param p2 Point on a surface of a sphere
-	 * @return Angle from p1 and p2 on surface of a sphere in Radians
+	 * @return Angle from p1 and p2 on surface of a sphere in Degree
 	 */
 	public static double angle(Point p1, Point p2){
+		/*double lat1 = p1.getRadLat();
+		double lat2 = p2.getRadLat();
+		double dLon = p2.getRadLon()-p1.getRadLon();
+
+		double dPhi = Math.log(Math.tan(lat2/2+Math.PI/4)/Math.tan(lat1/2+Math.PI/4));
+		if (Math.abs(dLon) > Math.PI){
+			if(dLon>0)
+				dLon = -(2*Math.PI-dLon);
+			else
+				dLon = (2*Math.PI+dLon);
+		}
+		double brng = Math.atan2(dLon, dPhi);
+		return (Math.toDegrees(brng)+360) % 360;*/
 		return Math.acos(
 				Math.sin(p1.getRadLat()) * Math.sin(p2.getRadLat()) + 
 				Math.cos(p1.getRadLat()) * Math.cos(p2.getRadLat()) * 
@@ -33,13 +46,25 @@ public class PtOpSphere {
 	 */
 	public static double distance(Point p1, Point p2){
 		return earth_radius * angle(p1,p2);
+		/*
+		double sinLatD = Math.sin((p1.getRadLat() - p2.getRadLat())/2);
+		double sinLonD = Math.sin((p1.getRadLon() - p2.getRadLon())/2);
+		double cosLat1 = Math.cos(p1.getRadLat());
+		double cosLat2 = Math.cos(p2.getRadLat());
+		double a = Math.pow(sinLatD,2)+cosLat1*cosLat2*Math.pow(sinLonD,2);
+		if (a<0){
+			a = -1*a;
+		}
+		double c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+		return earth_radius*c;
+		*/
 	}
 	/**
 	 * Calculate the cardinal Direction to North
 	 * Formel: ATAN2(COS(lat1)*SIN(lat2)-SIN(lat1)*COS(lat2)*COS(lon2-lon1), SIN(lon2-lon1)*COS(lat2))
 	 * @param p1 Point on a surface of a sphere
 	 * @param p2 Point on a surface of a sphere
-	 * @return The cardinal Direction (Himmelrichtung) to North in Radians
+	 * @return The cardinal Direction (Himmelsrichtung) to North in Radians
 	 */
 	public static double cardinalDirection(Point p1, Point p2){
 		/*Quelle: http://de.wikipedia.org/wiki/Kurswinkel
@@ -107,6 +132,7 @@ public class PtOpSphere {
 						Math.cos(p1.getRadLat())*Math.cos(p2.getRadLat())*
 						Math.pow((Math.sin((p1.getRadLon()-p2.getRadLon())/2)),2));
 	}
+	
 	public static double alongTrackDist(Point p1, Point p2, Point pt){
 		/*http://williams.best.vwh.net/avform.htm#XTE*/
 		double XTD = asin(Math.sin(dist(p1,pt))*Math.sin(crs(p1,pt)-crs(p1,p2)));
