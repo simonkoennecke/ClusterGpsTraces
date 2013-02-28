@@ -16,13 +16,15 @@ public class GridRow {
 		 */
 		private Trace list;
 		
+		public PointList(){
+		}
 		/**
 		 * 
 		 * @param t TODO momentan noch nicht berücksichtigt, da es fürs erste interessant ist.
 		 * @param pt Der Punkt vom Trace der gespeichert werden soll.
 		 */
 		public PointList(Trace t, Point pt){
-			list = new Trace();
+			list = new Trace("Für das Grid",-1);
 			add(t, pt);
 		}
 		public void add(Trace t, Point pt){
@@ -33,7 +35,10 @@ public class GridRow {
 			return list.iterator();
 		}
 		public int size(){
-			return list.size();
+			if(list == null)
+				return 0;
+			else
+				return list.size();
 		}
 		
 	}
@@ -53,7 +58,13 @@ public class GridRow {
 		}
 	}
 	public PointList get(Integer iR){
-		return listOfPoints.get(iR);
+		if(listOfPoints.get(iR) == null){
+			PointList l = new PointList();
+			listOfPoints.put(iR, l);
+			return l;
+		}
+		else
+			return listOfPoints.get(iR);
 	}
 	public int size(){
 		int tmp = 0;

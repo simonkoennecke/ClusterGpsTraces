@@ -179,7 +179,7 @@ public class KMeans implements ClusterTraces {
 						newLine = 90;						
 					}
 					else{
-						Debug.sysoWithLn(".");
+						Debug.sysoWithoutLn(".");
 						newLine--;
 					}
 					

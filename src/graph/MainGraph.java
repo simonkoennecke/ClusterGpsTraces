@@ -1,6 +1,9 @@
 package graph;
 
+import java.awt.Dimension;
 import java.util.List;
+
+import merg.Grid;
 
 import cluster.Cluster;
 import processing.core.*;
@@ -27,8 +30,10 @@ public class MainGraph extends PApplet {
 	
 	private paintModeOption paintMode = paintModeOption.Traces;
 	
-	private boolean paintIntersections = false;
+	private boolean paintIntersections = false, paintGrid = false;
+	
 	private List<FindTraceIntersections.Circle> intersections;
+	private Grid grid;
 	
 	public MainGraph(GpxFile _gpx, int w, int h){
 		gpx = _gpx;
@@ -72,12 +77,22 @@ public class MainGraph extends PApplet {
 	}
 	
 	public float lon(Point pt){
-		Double x = (pt.getLon()-minPt.getLon()) * lonFactor;
-		return x.floatValue()+(windowBorder/2);
+		//Double x = (pt.getLon()-minPt.getLon()) * lonFactor;
+		//(return x.floatValue()+(windowBorder/2);
+		return lon((float)pt.getLon());
+	}
+	public float lon(float x){
+		x = (x - (float) minPt.getLon()) * lonFactor;
+		return x+(windowBorder/2);
 	}
 	public float lat(Point pt){
-		Double y = (pt.getLat()-minPt.getLat()) * latFactor;
-		return y.floatValue()+(windowBorder/2);
+		//Double y = (pt.getLat()-minPt.getLat()) * latFactor;
+		//return y.floatValue()+(windowBorder/2);
+		return lat((float)pt.getLat());
+	}
+	public float lat(float y){
+		y = (y-(float)minPt.getLat()) * latFactor;
+		return y+(windowBorder/2);
 	}
 	public float x(Point pt){
 		Double x = (pt.getX()-minPt.getX()) * xFactor;
@@ -100,12 +115,17 @@ public class MainGraph extends PApplet {
 		return intersections;		
 	}
 	public void draw() {
+		Dimension dWindow = getSize();
+		if(!(dWindow.width == maxWindowWidth && dWindow.height == maxWindowHeight))
+			setSize(dWindow.width,dWindow.height);
 		background(255);
 		if(paintMode == paintModeOption.Traces)
 			new DrawTraces(this, gpx).draw();
 		else if(paintMode == paintModeOption.Cluster)
 			new DrawCluster(this, cluster).draw();
-		
+		if(paintGrid){
+			new GridGraph(this, grid).draw();		
+		}
 		if(paintIntersections){
 			this.ellipseMode(CENTER);
 			strokeWeight(3);
@@ -122,7 +142,7 @@ public class MainGraph extends PApplet {
 			}
 			strokeWeight(1);
 			this.stroke(this.color(0,0,0,255));
-			this.fill(this.color(255,0,0));
+			this.fill(this.color(255,0,255));
 			for(FindTraceIntersections.Circle c : intersections){
 				if(c.isOverlapping){
 					this.ellipse(this.lon(c.pt), this.lat(c.pt), 3,3);
@@ -132,4 +152,36 @@ public class MainGraph extends PApplet {
 		
 		//stroke(color(255,0,0));
 	}
+	public void dLine(Point p1, Point p2){
+		this.line(this.lon(p1), this.lat(p1), this.lon(p2), this.lat(p2));
+	}
+	public void dLine(float p1Lon, float p1Lat, float p2Lon, float p2Lat){
+		this.line(this.lon(p1Lon), this.lat(p1Lat), this.lon(p2Lon), this.lat(p2Lat));
+	}
+	public Grid getGrid() {
+		return grid;
+	}
+	public void setGrid(Grid grid) {
+		this.paintGrid = true;
+		this.grid = grid;
+	}
+	public paintModeOption getPaintMode() {
+		return paintMode;
+	}
+	public void setPaintMode(paintModeOption paintMode) {
+		this.paintMode = paintMode;
+	}
+	public boolean isPaintIntersections() {
+		return paintIntersections;
+	}
+	public void setPaintIntersections(boolean paintIntersections) {
+		this.paintIntersections = paintIntersections;
+	}
+	public boolean isPaintGrid() {
+		return paintGrid;
+	}
+	public void setPaintGrid(boolean paintGrid) {
+		this.paintGrid = paintGrid;
+	}
+	
 }

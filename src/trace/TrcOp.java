@@ -235,14 +235,15 @@ public class TrcOp {
 				reduction(t.getSubTraces(), tol, vId);
 				continue;
 			}
-			System.out.print("DouglasPeuckerReduction from Points " + t.size() + " ");
+			//Debug.sysoWithoutLn("DouglasPeuckerReduction from Points " + t.size() + " ");
 			Trace tmp = DouglasPeuckerReduction(t,tol, vId);
 			if(tmp != null){
 				t.addSubTraces(tmp);
-				System.out.println("to " + tmp.size());
+				//Debug.syso("to " + tmp.size());
 			}
-			else
-				System.out.println("to " + t.size());
+			else{
+				//Debug.syso("to " + t.size());
+			}
 			
 		}
 	}
@@ -445,8 +446,8 @@ public class TrcOp {
 		}
 	}
 	
-	public static List<Circle> getIntersections(Traces _t){
-		return FindTraceIntersections.getIntersections(_t);
+	public static List<Circle> getIntersections(Traces _t, double maxDistance, int noOfIteration){
+		return FindTraceIntersections.getIntersections(_t, maxDistance, noOfIteration);
 	}
 	/**
 	 * Ermittelt alle zu clusterene Traces.

@@ -6,7 +6,11 @@ import java.awt.geom.Rectangle2D;
 import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
 
+import merg.GridRow.PointList;
+
 import com.vividsolutions.jts.algorithm.LineIntersector;
+
+import core.Debug;
 
 import trace.*;
 
@@ -31,6 +35,7 @@ public class Grid {
 	 * Welche Kachelung das Grid hat auf basis der Traces
 	 */
 	private Double lonRaster , latRaster;
+	
 	/**
 	 *  
 	 */
@@ -44,7 +49,21 @@ public class Grid {
 		this.r = r;
 		this.c = c;
 	}
-	
+	/**
+	 * 
+	 * @param t
+	 * @param minCellSize
+	 */
+	public Grid(Traces t, double minCellSize){
+		this.t = t;
+		t.calcExtrema();
+		maxPt = t.getMax();
+		minPt = t.getMin();
+		r = (int) Math.floor(PtOpSphere.distance(minPt, new Point(maxPt.getLon(),minPt.getLat())) / minCellSize);
+		c = (int) Math.floor(PtOpSphere.distance(minPt, new Point(minPt.getLon(),maxPt.getLat())) / minCellSize);
+		setup();
+		addTraces(t);
+	}
 	/**
 	 * Sollte das Gitter auf Traces aufbauen, wir automatisch alles erzeugt.
 	 * @param t Traces die in diesem Grid zu finden sind
@@ -68,6 +87,12 @@ public class Grid {
 	public void setMinPt(Point minPt){
 		this.minPt = minPt;
 	}
+	public Point getMaxPt() {
+		return maxPt;
+	}
+	public Point getMinPt() {
+		return minPt;
+	}
 	public void setup(){
 		lonRaster = (maxPt.getLon() - minPt.getLon()) / r;
 		latRaster = (maxPt.getLat() - minPt.getLat()) / c;
@@ -79,11 +104,17 @@ public class Grid {
 		return c;
 	}
 	public void addTraces(Traces traceList){
+		//int i=0;
+		//Debug.syso("Add Traces to Grid:");
 		for(Trace t: traceList){
 			if(t.getSubTraces().size()>0){
 				addTraces(t.getSubTraces());
+				continue;
 			}
 			addTrace(t);
+			//if(i%30 == 0)
+			//	Debug.syso(i + " von " + traceList.size());
+			//i++;
 		}
 	}
 	
@@ -105,137 +136,32 @@ public class Grid {
 	 * @param p2 Der Endpunkt von der Kante
 	 */
 	public void addEdge(Trace t, Point p1, Point p2){
-		//Füge den Anfangspunkt hinzu.
+		//Berechne in Welchen Grid der Anfangspunkt und Endpunkt fällt
 		int[] start = calcPointGridCoordinats(p1);
 		int[] end	= calcPointGridCoordinats(p2);
 		
-		int[] step = getDirection(start, end);
+		int[] step = {end[0]-start[0],end[1]-start[1]};
+		step[0] = (step[0]==0)?1:step[0]/Math.abs(step[0]);
+		step[1] = (step[1]==0)?1:step[1]/Math.abs(step[1]);
 		
-		for(int x=start[0];x<end[0];x += step[0]){
-			for(int y=start[1];y<end[1];y += step[1]){
+		for(int x=start[0];x!=(end[0]+step[0]);x += step[0]){
+			for(int y=start[1];y!=(end[1]+step[1]);y += step[1]){
 				//Obere linke Ecke
-				double top[] = {x*latRaster, y*lonRaster};
+				double top[] = {minPt.getLon()+x*lonRaster, minPt.getLat()+y*latRaster};
 				//untere rechte Ecke
-				double buttom[] = {(x+1)*latRaster, (y+1)*lonRaster};
-				if(Geometry.isLineIntersectingRectangle(p1.getLat(), p1.getLon(), p2.getLat(), p2.getLon(), top[0], top[1], buttom[0], buttom[1])){
-					addPoint(t, x, y, new Point(minPt.getLon() + x * lonRaster, minPt.getLon() + y * lonRaster));
+				double buttom[] = {top[0]+lonRaster, top[1]+latRaster};
+				//Schneidet die Kante das Rechteck?
+				if(Geometry.isLineIntersectingRectangle(p1.getLon(), p1.getLat(), p2.getLon(), p2.getLat(), top[0], top[1], buttom[0], buttom[1])){
+					//Ja füge den Punkt zur Zelle hinzu.
+					addPoint(t, x, y, new Point(minPt.getLon() + x * lonRaster, minPt.getLon() + y * lonRaster));					
 				}
 			}
-		}
-		
-		/*
-		//Liegt start und end Punkt mindestens zwei Zellen entfernt?
-		if(dist(start,end) > 1){
-			int x = start[0], y=start[1];
-			boolean wX=true, wY=true;
-			//System.out.println("Schritte (x: " + step[0] + ",y: " + step[1] + ")");
-			while(wX && wY){
-				if(x == end[0]){
-					wX = false;
-				}
-				else{
-					x += step[0];
-				}
-				if(y == end[1]){
-					wY = false;
-				}
-				else{
-					y += step[1];
-				}
-				
-				//System.out.println("X: (" + x + ", " + start[0] + ", " + end[0] + "), Y: (" + y + ", " + start[1] + ", " + end[1] + ").");
-				//addPoint(t, new Point(p1.getX() + x * dX, p1.getY() + y * dY, true));
-				addPoint(t, x, y, new Point(p1.getLon() + x * lonRaster, p1.getLon() + y * latRaster));
-			}
-		}
-		*/
-	}
-
-	/**
-	 * Berechnet die Schrittweiten von X und Y.
-	 * @param start Die Raster Koordinaten für den Anfangspunkt der Kante
-	 * @param end Die Raster Koordinaten für den Endpunkt der Kante
-	 * @return int[0] ist die Schrittweite von X und int[1] ist die Schrittweite von Y
-	 */
-	private int[] getDirection(int[] start, int[] end){
-		int[] r = {0,0};
-		//ist x größer als y?
-		int dX = (end[0]-start[0]), dY = (end[1] - start[1]);
-		int algSign[] = {1,1};
-		if(dX != 0)
-			algSign[0] = dX/Math.abs(dX);
-		if(dY != 0)
-			algSign[1] = dY/Math.abs(dY);
-		
-		dX = Math.abs(dX);
-		dY = Math.abs(dY);
-		if(dX > dY){
-			if(dY == 0)
-				r[0] = 0;
-			else
-				r[0] = algSign[0];
-			r[1] = algSign[1];
-		}
-		//ist y ist größer als x
-		else if (dX < dY){
-			r[0] = 1 * algSign[0];
-			if(dX == 0)
-				r[1] = 0;
-			else
-				r[1] = algSign[1];
-		}
-		else{
-			r[0] = algSign[0];
-			r[1] = algSign[1]; 
-		}
-		//Hier werden Zeilen oder Spalten ausgelassen
-		/*
-		 * |---|---|---|
-		 * | 1 |   |   | X\
-		 * |---|---|---|   \
-		 * |   |   | 1 |    \>
-		 * |---|---|---|
-		 */
-		/*
-  		dX = Math.abs(dX);
-		dY = Math.abs(dY);
-		if(dX > dY){
-			if(dY == 0)
-				r[0] = 0;
-			else
-				r[0] = (dX/dY) * algSign[0];
-			r[1] = 1 * algSign[1];
-		}
-		//ist y ist größer als x
-		else if (dX < dY){
-			r[0] = 1 * algSign[0];
-			if(dX == 0)
-				r[1] = 0;
-			else
-				r[1] = (dY/dX) * algSign[1];
-		}
-		else{
-			r[0] = algSign[0];
-			r[1] = algSign[1]; 
-		}*/
-		
-		return r;
-	}
-	/**
-	 * Distanzfunktion auf dem Raster
-	 */
-	private int dist(int[] p1, int[] p2){
-		int cDist = Math.abs(p2[0] - p1[0]);
-		int rDist = Math.abs(p2[1] - p1[1]);
-		return Math.max(cDist, rDist);
-		
+		}		
 	}
 	
 	public int[] calcPointGridCoordinats(Point pt){
-		int iR,iC; // insert in Row- or Column- Id
-		iC = (int) Math.floor((pt.getLat() - minPt.getLat()) / latRaster);
-		iR = (int) Math.floor((pt.getLon() - minPt.getLon()) / lonRaster);
-		return new int[]{iC,iR};
+		int[] r ={(int) Math.floor((pt.getLon() - minPt.getLon()) / lonRaster), (int) Math.floor((pt.getLat() - minPt.getLat()) / latRaster)};
+		return r;
 	}
 	/**
 	 * Füge ein Punkt hinzu mit bekannten Indices für Spalte und Zeile
@@ -250,9 +176,7 @@ public class Grid {
 		}
 		else{
 			grid.put(iC, new GridRow(iR,t, pt));
-		}
-		//System.out.println("(" + iC + "," + iR + ")");
-		//return new int[]{iC,iR};
+		}		
 	}
 	/**
 	 * Füge einen Punkt ins Grid ein.
@@ -304,5 +228,24 @@ public class Grid {
 			}
 		}
 		return meanTrace;
+	}
+	public Double getLonRaster() {
+		return lonRaster;
+	}
+	public Double getLatRaster() {
+		return latRaster;
+	}
+	public int[] getAllSizeOfCells(){
+		int r[] = new int[getRowNo()*getColumnNo()];
+		for(int i=0; i < getRowNo(); i++){
+			for(int j=0; j < getColumnNo(); j++){
+				PointList list = getRow(i).get(j);
+				if(list != null)
+					r[i*j] = list.size();
+				else
+					r[i*j] = 0;
+			}
+		}
+		return r;
 	}
 }

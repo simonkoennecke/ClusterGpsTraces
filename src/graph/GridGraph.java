@@ -1,65 +1,115 @@
 package graph;
 
+import java.util.Arrays;
+import java.util.Collections;
+
+import core.Debug;
 import merg.Grid;
-import processing.core.PApplet;
+import merg.GridRow.PointList;
 
 /**
  * 
  * @author Simon
  *
  */
-public class GridGraph extends PApplet {
-	private static final long serialVersionUID = -3631156700571199647L;
-	private int maxWindowWidth = 1024, maxWindowHeight = 800;
-	private static int windowBorder = 40;
+public class GridGraph{
 	private Grid grid;
+	private MainGraph g;
+	private float[] s,e;
+	private float dX,dY;
 	
-	public GridGraph(Grid grid, int w, int h) {
+	public GridGraph(MainGraph g, Grid grid) {
+		this.g = g;
 		this.grid = grid;
-		setSize(w, h);
-	}
-	public void setGpxFile(GpxFile _gpx){
-		setSize(maxWindowHeight + windowBorder, maxWindowWidth + windowBorder);;
-	    setup(); 
-	    redraw();
+		s = new float[]{(float) grid.getMinPt().getLon(),(float) grid.getMinPt().getLat()};
+		e = new float[]{(float) grid.getMaxPt().getLon(),(float) grid.getMaxPt().getLat()};
+		dX = grid.getLonRaster().floatValue();
+		dY = grid.getLatRaster().floatValue();
+		
+	}	
+	public void draw(){
+		drawGrid();
+		colorCells();
+		//drawNumbers();
 		
 	}
-	public void setup(){
-		size(maxWindowWidth,maxWindowHeight);
-
-		frameRate(1);
-		smooth();
-		noLoop();
-	}
 	
-	public void setSize(int w, int h){
-		maxWindowHeight = h - windowBorder;
-		maxWindowWidth = w - windowBorder;
-		resize(w, h);
-	}
-	
-	public void draw(){
-		drawGrid(new float[]{windowBorder,windowBorder}, new float[]{maxWindowWidth-windowBorder,maxWindowHeight-windowBorder});
-	}
-	
-	public void drawGrid(float[] s, float[] e){
-		float dX = max(s[0],e[0])-min(s[0],e[0])/grid.getColumnNo();
-		float dY = max(s[1],e[1])-min(s[1],e[1])/grid.getColumnNo();
+	public void drawGrid(){
 		float d = 0;
-		for(int i=0; i < grid.getRowNo(); i++){
-			d = dY * i;
-			line(s[0],s[1]*d,e[0]*d,e[1]);
+		//Paint Rows
+		g.stroke(g.color(190,190,190, 102));
+		for(int i=0; i <= grid.getRowNo(); i++){
+			d = dX * i;			
+			g.dLine(s[0]+d,s[1],s[0]+d,e[1]);
 		}
-		for(int j=0; j < grid.getColumnNo(); j++){
-			d = dX * j;
-			line(s[0]*d,s[1],e[0]*d,e[1]);
-		}
+		//Paint Columns
+		for(int j=0; j <= grid.getColumnNo(); j++){
+			d = dY * j;			
+			g.dLine(s[0],s[1]+d,e[0],s[1]+d);
+		}						
+	}
+	public void drawNumbers(){
 		float midX = dX/2, midY = dY/2;
+		g.textSize(7);
+		g.fill(150);
 		for(int i=0; i < grid.getRowNo(); i++){
 			for(int j=0; j < grid.getColumnNo(); j++){
-				text(String.valueOf(grid.getRow(j).get(i)), s[0]*i+midX,s[1]*j+midY);
+				int listSize = grid.getRow(i).get(j).size();
+				String listSizeStr = String.valueOf(listSize);
+				
+				if(listSize>9)
+					g.text(listSizeStr, g.lon(s[0]+dX*i+midX)-3,g.lat(s[1]+dY*j+midY)+2);
+				else
+					g.text(listSizeStr, g.lon(s[0]+dX*i+midX),g.lat(s[1]+dY*j+midY));
 			}
 		}
+	}
+	public void colorCells(){
+		int[] l = grid.getAllSizeOfCells();
+		long mean = 0;
+		for(int i : l)
+			mean += i;
+		mean = mean/l.length;
+		double var = 0.0;
+	    for (int i : l)
+	    	var += Math.pow(mean - i,2);
+	    var /= (l.length);
+	    double stdvar =	Math.sqrt(var);
+	    int aplha = 120; 
+	    int color[] = {g.color(255,0,0,aplha), //rot
+	    			   g.color(255,140,0,aplha), //organe
+	    			   g.color(255,255,0,aplha), // gelb
+	    			   g.color(255,215,0,aplha), // gold
+	    			   g.color(255,255,255,1)
+	    			   }; 
+	    Arrays.sort(l);
+		g.rectMode(g.CORNERS);  // Set rectMode to CORNERS
+		int c=0;
+		for(int i=0; i < grid.getRowNo(); i++){
+			for(int j=0; j < grid.getColumnNo(); j++){
+				if(grid.getRow(i).get(j).size() > (stdvar*3)){
+					c=0;				
+				}
+				else if(grid.getRow(i).get(j).size() > (stdvar*2)){
+					c=1;					
+				}
+				else if(grid.getRow(i).get(j).size() > (stdvar*1)){
+					c=2;					
+				}
+				else if(grid.getRow(i).get(j).size() > (stdvar*0.5)){
+					c=3;					
+				}
+				else{
+					c=4;					
+				}
+				if(grid.getRow(i).get(j).size() == l[l.length-1])
+					g.fill(g.color(255,255,255,255));				
+				else
+					g.fill(color[c]);
 				
+				g.rect(g.lon(s[0]+dX*i),g.lat(s[1]+dY*j), g.lon(s[0]+dX*(i+1)),g.lat(s[1]+dY*(j+1)));
+			}
+		}
+		g.rectMode(g.CORNER);
 	}
 }

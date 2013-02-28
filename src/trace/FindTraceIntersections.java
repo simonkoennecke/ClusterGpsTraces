@@ -41,9 +41,7 @@ public class FindTraceIntersections {
 	}
 	
 	
-	public static List<Circle> getIntersections(Traces _t){
-		float maxDistance = 0.005f;
-		float minNeighbours = 40;
+	public static List<Circle> getIntersections(Traces _t, double maxDistance, int noOfIteration){		
 		Integer vId = Trace.getIncrementVersionId();
 		Traces t = TrcOp.getTraces(_t);
 		
@@ -140,81 +138,9 @@ public class FindTraceIntersections {
 		}
 		
 		
-		Debug.syso("Schnittbereich berechnen");
-		i=0; 
-		int cntIntersection = intersections.size()-1;
-		while(i < cntIntersection){
-			Circle c = intersections.get(i);
-			if(!c.isOverlapping){
-				PTIntProcedure proc = new PTIntProcedure(c.pt);			
-				com.infomatiq.jsi.Point point = new com.infomatiq.jsi.Point((float) c.pt.getLon(), (float) c.pt.getLat());
-				siEdges.nearest(point, proc, (float) (c.r * 2));
-				if(proc.getCountNearestNeighbours() > 2){
-					/*
-					//METHODE 1:
-					c.isOverlapping = true;
-					List<Circle> tmpList = new ArrayList<Circle>();
-					tmpList.add(c);
-					for(Integer intersectionId : proc.getNearestNeighbours()){
-						//Der Kreis soll nur einmal betrachtet werden
-						if(!intersections.get(intersectionId).isOverlapping){
-							//Die Kreiszenteren sollen nur 20 Meter von einander entfernt liegen
-							double dist = PtOpPlane.dist(c.pt, intersections.get(intersectionId).pt);							
-							Debug.syso("Dist: " + dist + " < " + maxDistance);
-							//if(dist < maxDistance){
-								tmpList.add(intersections.get(intersectionId));
-								intersections.get(intersectionId).isOverlapping = true;
-							//}
-						}
-					}
-					intersections.add(minimumBoundingCircleForCircles(tmpList));
-					//ENDE METHODE 1
-					*/
-					//METHODE 2:
-					Rectangle rec = new Rectangle();
-					//Loesche den Eintrag Kreis
-					rec.set((float) (c.pt.getLon()-c.r), (float) (c.pt.getLat()-c.r), (float) (c.pt.getLon()+c.r), (float) (c.pt.getLat()+c.r));
-					siIntersections.delete(rec,i);
-					c.isOverlapping = true;
-					
-					for(Integer intersectionId : proc.getNearestNeighbours()){
-						Circle c2 = intersections.get(intersectionId);
-						if(i != intersectionId || !c2.isOverlapping || proc.getCountNearestNeighbours() > 0){
-							rec.set((float) (c2.pt.getLon()-c2.r), (float) (c2.pt.getLat()-c2.r), 
-									(float) (c2.pt.getLon()+c2.r), (float) (c2.pt.getLat()+c2.r));			
-							siIntersections.delete(rec,intersectionId);
-							c2.isOverlapping = true;
-							//c = mergCircle(c, c2);
-							c = minimalEnclosingCircle(c, c2);						
-						}					
-					}
-					
-					
-					int circleIntersectionId = intersections.size();
-					intersections.add(c);						
-					rec.set((float) (c.pt.getLon()), (float) (c.pt.getLat()), 
-							(float) (c.pt.getLon()), (float) (c.pt.getLat()));
-					
-					siIntersections.add(rec, circleIntersectionId);
-					//ENDE METHODE 2
-					 
-					
-				}
-			}
-			i++;
-			//cntIntersection = intersections.size()-1;
-		}
-		
-		/* ALTE METHODE:
-		Debug.syso("Ermittel alle Schnittpunkte");
-		LinkedList<Point> intersections = new LinkedList<Point>();
-		for(int i=0; i < t.size(); i++){
-			for(int s=i+1; s < t.size(); s++){
-				if(i != s)
-					edgeIntersect(intersections, t.get(i), t.get(s));
-			}
-		}
-		*/
+		Debug.syso("Schnittbereich berechnen");		
+		for(i=1; i <= noOfIteration; i++)
+			dedectIntersection(siEdges, siIntersections, intersections, maxDistance*i);
 		
 		/*
 		Debug.syso("Berechne Nachbarschaften");
@@ -255,7 +181,80 @@ public class FindTraceIntersections {
 		return intersections;
 		
 	}
-	
+	private static void dedectIntersection(SpatialIndex siEdges, SpatialIndex siIntersections, List<Circle> intersections, double maxDistance){
+		int i=0; 
+		int cntIntersection = intersections.size()-1;
+		while(i < cntIntersection){
+			Circle c = intersections.get(i);
+			if(!c.isOverlapping){
+				PTIntProcedure proc = new PTIntProcedure(c.pt);			
+				com.infomatiq.jsi.Point point = new com.infomatiq.jsi.Point((float) c.pt.getLon(), (float) c.pt.getLat());
+				siEdges.nearest(point, proc, (float) (c.r * 1.2));
+				if(proc.getCountNearestNeighbours() > 2){
+					/*
+					//METHODE 1:
+					List<Circle> tmpList = new ArrayList<Circle>();
+					tmpList.add(c);
+					for(Integer intersectionId : proc.getNearestNeighbours()){
+						//Der Kreis soll nur einmal betrachtet werden
+						if(!intersections.get(intersectionId).isOverlapping){
+							//Die Kreiszenteren sollen nur 20 Meter von einander entfernt liegen
+							double dist = PtOpPlane.dist(c.pt, intersections.get(intersectionId).pt);							
+							//Debug.syso("Dist: " + dist + " < " + maxDistance);
+							if(dist < maxDistance){
+								tmpList.add(intersections.get(intersectionId));
+								intersections.get(intersectionId).isOverlapping = true;
+								c.isOverlapping = true;
+							}
+						}
+					}
+					intersections.add(minimumBoundingCircleForCircles(tmpList));
+					//ENDE METHODE 1
+					*/
+					/**/
+					//METHODE 2:
+					Rectangle rec = new Rectangle();
+					//Loesche den Eintrag Kreis
+					rec.set((float) (c.pt.getLon()-c.r), (float) (c.pt.getLat()-c.r), (float) (c.pt.getLon()+c.r), (float) (c.pt.getLat()+c.r));
+					siIntersections.delete(rec,i);					
+					
+					for(Integer intersectionId : proc.getNearestNeighbours()){
+						Circle c2 = intersections.get(intersectionId);
+						if(i != intersectionId || !c2.isOverlapping || proc.getCountNearestNeighbours() > 0){
+							rec.set((float) (c2.pt.getLon()-c2.r), (float) (c2.pt.getLat()-c2.r), 
+									(float) (c2.pt.getLon()+c2.r), (float) (c2.pt.getLat()+c2.r));			
+							siIntersections.delete(rec,intersectionId);
+							c2.isOverlapping = true;
+							//c = mergCircle(c, c2);
+							//c = minimalEnclosingCircle(c, c2);
+							double dist = PtOpPlane.dist(c.pt, intersections.get(intersectionId).pt);							
+							//Debug.syso("Dist: " + dist + " < " + maxDistance);
+							//if(dist < maxDistance){
+								c.isOverlapping = true;
+								c = circleFrom2Circles(c, c2);
+							//}							
+						}					
+					}
+					
+					
+					int circleIntersectionId = intersections.size();
+					intersections.add(c);						
+					rec.set((float) (c.pt.getLon()), (float) (c.pt.getLat()), 
+							(float) (c.pt.getLon()), (float) (c.pt.getLat()));
+					
+					siIntersections.add(rec, circleIntersectionId);
+					//ENDE METHODE 2
+					/**/ 
+					
+				}
+			}
+			i++;
+			//cntIntersection = intersections.size()-1;
+		}
+		for(i=0; i < cntIntersection; i++){
+			intersections.get(i).isOverlapping = true;
+		}
+	}
 	static class clsIntersection implements Comparable<clsIntersection>{
 		public Circle circle;
 		public Integer index;
@@ -510,7 +509,7 @@ public class FindTraceIntersections {
 	            Circle circle = circleFrom2Circles(circles.get(i), circles.get(j));
 	            if (areAllCirclesInOrOnCircle(circles, circle) &&
 	                circle.r < best.r) {
-	                best.pt = new Point(circle.pt.getLon(), circle.pt.getLat());
+	                best.pt = circle.pt;
 	                best.r = circle.r;
 	            }
 
