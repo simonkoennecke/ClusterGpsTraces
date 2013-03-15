@@ -43,9 +43,13 @@ public class GpxLoader {
 			if( ev.isStartElement() ) {
 				stck.push( ev.asStartElement().getName().getLocalPart() );
 				
-				if(ev.asStartElement().getName().getLocalPart() == "trk"){
+				/*if(ev.asStartElement().getName().getLocalPart() == "trk"){
+					tmpTrace = t.addTrace("vId " + traceVersionsId + "",traceVersionsId);					
+				}*/
+				if(ev.asStartElement().getName().getLocalPart() == "trkseg"){
 					tmpTrace = t.addTrace("vId " + traceVersionsId + "",traceVersionsId);					
 				}
+				
 				//TODO: Namen mit importieren
 				/*if(ev.asStartElement().getName().getLocalPart() == "name"){
 					tmpTrace.setName(ev.asCharacters().getData());					

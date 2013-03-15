@@ -50,11 +50,14 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 	
 	private JLabel lblList[] = new JLabel[noOfFields];
 	
+	private JCheckBoxMenuItem chkList[] = new JCheckBoxMenuItem[100];
+	
 	//private ConfigMouseListener listener;
 	
 	private GpxFile gpx;
 	
 	private JMenuBar menuBar;
+	private JMenu menuCluster;
 	
 	  // constructor
 	public ControlPanel(JFrame _jf, GpxFile _gpx) {
@@ -129,7 +132,35 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         menuBar.add(menu);
         
         /**
-		 * Menu Punkt: Spuren
+		 * Menu Punkt: Graph
+		 */
+        menu = new JMenu("Graph");
+	    
+	    item = new JMenuItem("Graph speichern");
+        item.addActionListener(this);
+        item.setActionCommand("saveGraphToFile");
+        menu.add(item);
+        item = new JMenuItem("Redraw Graph");
+        item.addActionListener(this);
+        item.setActionCommand("redraw");
+        menu.add(item);
+        
+        item = new JMenuItem("Traces anzeigen/verbergen");
+        item.addActionListener(this);
+        item.setActionCommand("togglePaintTraces");
+        menu.add(item);
+        
+        item = new JMenuItem("Zeige Traces oder Cluster an");
+        item.addActionListener(this);
+        item.setActionCommand("togglePaintModeGraph");
+        menu.add(item);
+        
+        
+
+        menuBar.add(menu);
+        
+        /**
+		 * Menu Punkt: Spuren Anzeigen
 		 */
 		menu = new JMenu("Spuren");
 	    
@@ -142,15 +173,10 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 		
         
         /**
-		 * Menu Punkt: Graph
+		 * Menu Punkt: Spuren
 		 */
         menu = new JMenu("Spur-Operation");
 	    
-	    item = new JMenuItem("Graph speichern");
-        item.addActionListener(this);
-        item.setActionCommand("saveGraphToFile");
-        menu.add(item);
-        
         item = new JMenuItem("Fläche verkleinern");
         item.setActionCommand("resizePlain");
         item.addActionListener(this);
@@ -201,7 +227,7 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         menuBar.add(menu);
         
         /**
-		 * Menu Punkt: Graph
+		 * Menu Punkt: Dichtegitter
 		 */
         menu = new JMenu("Gitter");
         
@@ -209,9 +235,25 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         item.setActionCommand("tracesTogrid");
         item.addActionListener(this);
         menu.add(item);
+        createTxtField(menu, 5, "Größe der Zelle [Meter]:", "10");
         
-        item = new JMenuItem("Grid anzeigen/verbergen");
+        item = new JMenuItem("Dichtegitter anzeigen/verbergen");
+        item.setActionCommand("toggleDensityGridDisplay");
+        item.addActionListener(this);
+        menu.add(item);
+        
+        item = new JMenuItem("Gitter anzeigen/verbergen");
         item.setActionCommand("toggleGridDisplay");
+        item.addActionListener(this);
+        menu.add(item);
+        
+        item = new JMenuItem("Dichtefarbe anzeigen/verbergen");
+        item.setActionCommand("toggleDensityColorDisplay");
+        item.addActionListener(this);
+        menu.add(item);
+        
+        item = new JMenuItem("Dichtanzahl anzeigen/verbergen");
+        item.setActionCommand("toggleDensityNumberDisplay");
         item.addActionListener(this);
         menu.add(item);
         
@@ -221,10 +263,65 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         /**
 		 * Menu Punkt: Cluster
 		 */
-        menu = new JMenu("Cluster");
+        createMenuCluster();
+        menuBar.add(menuCluster);
         
-        menuBar.add(menu);
 		
+	}
+	
+	private void createMenuCluster(){
+		menuCluster  = new JMenu("Cluster");
+		JMenuItem item;
+		item = new JMenuItem("Cluster berechnen");
+        item.setActionCommand("clusterTraces");
+        item.addActionListener(this);
+        menuCluster.add(item);
+        createTxtField(menuCluster, 6, "Anzahl Cluster", "5");
+        
+        item = new JMenuItem("Cluster anzeigen/verbergen");
+        item.setActionCommand("togglePaintModeGraph");
+        item.addActionListener(this);
+        menuCluster.add(item);
+        
+        menuCluster.add(new JSeparator());
+        
+        item = new JMenuItem("Erste oder zweite Iteration anzeigen");
+        item.setActionCommand("toggleClusterFirstOrSecond");
+        item.addActionListener(this);
+        menuCluster.add(item);
+        
+    	for(int i=0; i < chkList.length; i++){
+    		createCheckbox(menuCluster, i, i+". Cluster");
+    	}
+	        
+        
+	}
+	private void createCheckbox(JMenu menu, int index, String label){
+		final Dimension dim = new Dimension(150,15);
+		chkList[index] = new JCheckBoxMenuItem(label, false);
+		chkList[index].setPreferredSize(dim);
+		chkList[index].setActionCommand("toggleCluster_"+index);
+		chkList[index].addActionListener(this);
+		chkList[index].setVisible(false);
+        menu.add(chkList[index]);
+                
+	}
+	private void setClusterCheckbox(){
+		try{
+	        Traces c = graph.getDrawCluster().getCluster().getCentroid();
+	        if(graph.getDrawCluster().getCluster().getCentroid().size() > 0){
+	        	for(int i=0; i < c.size(); i++){
+	        		chkList[i].setSelected(c.get(i).isDisplay());
+	        		chkList[i].setVisible(true);
+	        	}
+	        	for(int i=c.size(); i < chkList.length; i++){
+	        		chkList[i].setVisible(false);
+	        	}
+	        }
+        }
+		catch (Exception e) {
+			// TODO: handle exception
+		}
 	}
 	private void createTxtField(JMenu menu, int index, String label, String defaultValue){
 		JPanel p = new JPanel();
@@ -364,15 +461,21 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 		else if(actionCommand == "clusterTraces"){
 			Debug.syso("Cluster");
 			Traces tmp = TrcOp.getTraces(gpx.getTraces());
-			int k = Integer.valueOf(txtFields[3].getText());
+			int k = Integer.valueOf(txtFields[6].getText());
 			ClusterTraces cltr = new KMeans(k, tmp);
 			cltr.run();
-			graph.setCluster(cltr.getCluster());
+			graph.getDrawCluster().setClusterSecondIteration(cltr.getCluster());
+			graph.getDrawCluster().setClusterFirstIteration(cltr.getClusterFirstIteration());
+			
+			graph.setPaintMode(MainGraph.paintModeOption.Cluster);
+			//Config JMenuBar
+			setClusterCheckbox();
 			graph.redraw();
 		}
 		else if(actionCommand == "tracesTogrid"){
 			Debug.syso("Trace to Grid");
-			graph.setGrid(new Grid(gpx.getTraces(), 10));				
+			int k = Integer.valueOf(txtFields[5].getText());
+			graph.setGrid(new Grid(gpx.getTraces(), k));				
 			graph.redraw();
 		}
 		else if(actionCommand == "redo"){
@@ -386,13 +489,60 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 			graph.setPaintIntersections(!graph.isPaintIntersections());
 			graph.redraw();
 		}
-		else if(actionCommand == "toggleGridDisplay"){
-			Debug.syso("Toggle Intersection Display");
+		else if(actionCommand == "toggleDensityGridDisplay"){
+			Debug.syso("Toggle Density Grid Display");
 			graph.setPaintGrid(!graph.isPaintGrid());
 			graph.redraw();
 		}
+		else if(actionCommand == "toggleDensityColorDisplay"){
+			Debug.syso("Toggle Density Color Display");
+			graph.getGridGraph().setPaintDensity(!graph.getGridGraph().isPaintDensity());
+			graph.redraw();
+		}
+		else if(actionCommand == "toggleDensityNumberDisplay"){
+			Debug.syso("Toggle Density NumberDisplay");
+			graph.getGridGraph().setPaintNumbers(!graph.getGridGraph().isPaintNumbers());
+			graph.redraw();
+		}
+		else if(actionCommand == "toggleGridDisplay"){
+			Debug.syso("Toggle Density Grid Grid Display");
+			graph.getGridGraph().setPaintGrid(!graph.getGridGraph().isPaintGrid());
+			graph.redraw();
+		}
+		else if(actionCommand == "togglePaintTraces"){
+			Debug.syso("Toggle Density Grid Grid Display");
+			graph.getDrawTraces().setPaintTraces(!graph.getDrawTraces().isPaintTraces());
+			graph.redraw();
+		}
+		else if(actionCommand == "toggleClusterFirstOrSecond"){
+			Debug.syso("Toggle between first or second Iteration from Clustering");
+			graph.getDrawCluster().setPaintFirstIteration(!graph.getDrawCluster().isPaintFirstIteration());
+			setClusterCheckbox();
+			graph.redraw();
+			
+		}
+		else if(actionCommand == "redraw"){
+			graph.redraw();
+		}
+		else if(actionCommand == "togglePaintModeGraph"){
+			if(graph.getPaintMode() == MainGraph.paintModeOption.Cluster)
+				graph.setPaintMode(MainGraph.paintModeOption.Traces);
+			else
+				graph.setPaintMode(MainGraph.paintModeOption.Cluster);
+			
+			graph.redraw();
+		}
 		else{
-			System.out.println("Event: " + actionCommand);
+			if(actionCommand.startsWith("toggleCluster_")){
+				int clusterId = Integer.valueOf(actionCommand.replace("toggleCluster_", ""));
+				System.out.println("toggleCluster: " + clusterId);
+				Trace c = graph.getDrawCluster().getCluster().getCentroid(clusterId);
+				c.setDisplay(!c.isDisplay());
+				graph.redraw();
+			}
+			else{
+				System.out.println("Event: " + actionCommand);
+			}
 		}
 		Debug.syso("Displayed Traces before " + cntDispTraces + " with " + cntDispPoints + " Points");
 		Debug.syso("Displayed Traces after " + gpx.getTraces().countDisplayedTraces() + " with " + gpx.getTraces().countPoints() + " Points");

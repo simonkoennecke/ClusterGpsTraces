@@ -14,8 +14,6 @@ public class MainGraph extends PApplet {
 	
 	private GpxFile gpx;
 	
-	private Cluster cluster;
-	
 	private int maxWindowWidth = 1024, maxWindowHeight = 800;
 	
 	private Point maxPt, minPt;
@@ -26,14 +24,19 @@ public class MainGraph extends PApplet {
 	
 	private static int windowBorder = 40;
 	
-	private enum paintModeOption {Traces, Cluster};
+	public static enum paintModeOption {Traces, Cluster};
 	
 	private paintModeOption paintMode = paintModeOption.Traces;
 	
 	private boolean paintIntersections = false, paintGrid = false;
 	
 	private List<FindTraceIntersections.Circle> intersections;
-	private Grid grid;
+	
+	private GridGraph gridGraph = new GridGraph(this);
+	
+	private DrawTraces drawTraces = new DrawTraces(this);
+	
+	private DrawCluster drawCluster = new DrawCluster(this);
 	
 	public MainGraph(GpxFile _gpx, int w, int h){
 		gpx = _gpx;
@@ -102,11 +105,7 @@ public class MainGraph extends PApplet {
 		Double y = (pt.getY()-minPt.getY()) * yFactor;
 		return y.floatValue()+(windowBorder/2);
 	}
-	public void setCluster(Cluster c){
-		cluster = c;
-		paintMode = paintModeOption.Cluster;
-		
-	}
+	
 	public void setIntersections(List<FindTraceIntersections.Circle> c){
 		intersections = c;
 		paintIntersections = true;		
@@ -119,12 +118,15 @@ public class MainGraph extends PApplet {
 		if(!(dWindow.width == maxWindowWidth && dWindow.height == maxWindowHeight))
 			setSize(dWindow.width,dWindow.height);
 		background(255);
-		if(paintMode == paintModeOption.Traces)
-			new DrawTraces(this, gpx).draw();
-		else if(paintMode == paintModeOption.Cluster)
-			new DrawCluster(this, cluster).draw();
+		if(paintMode == paintModeOption.Traces){
+			drawTraces.setGpx(gpx);
+			drawTraces.draw();
+		}
+		else if(paintMode == paintModeOption.Cluster){
+			drawCluster.draw();
+		}
 		if(paintGrid){
-			new GridGraph(this, grid).draw();		
+			gridGraph.draw();		
 		}
 		if(paintIntersections){
 			this.ellipseMode(CENTER);
@@ -159,11 +161,14 @@ public class MainGraph extends PApplet {
 		this.line(this.lon(p1Lon), this.lat(p1Lat), this.lon(p2Lon), this.lat(p2Lat));
 	}
 	public Grid getGrid() {
-		return grid;
+		return gridGraph.getGrid();
+	}
+	public GridGraph getGridGraph() {
+		return gridGraph;
 	}
 	public void setGrid(Grid grid) {
 		this.paintGrid = true;
-		this.grid = grid;
+		this.gridGraph.setGrid(grid);
 	}
 	public paintModeOption getPaintMode() {
 		return paintMode;
@@ -183,5 +188,18 @@ public class MainGraph extends PApplet {
 	public void setPaintGrid(boolean paintGrid) {
 		this.paintGrid = paintGrid;
 	}
+	public DrawTraces getDrawTraces() {
+		return drawTraces;
+	}
+	public void setDrawTraces(DrawTraces drawTraces) {
+		this.drawTraces = drawTraces;
+	}
+	public DrawCluster getDrawCluster() {
+		return drawCluster;
+	}
+	public void setDrawCluster(DrawCluster drawCluster) {
+		this.drawCluster = drawCluster;
+	}
+	
 	
 }

@@ -17,20 +17,35 @@ public class GridGraph{
 	private MainGraph g;
 	private float[] s,e;
 	private float dX,dY;
+	private boolean paintGrid=true,paintNumbers=false,paintDensity=true;
 	
+	public GridGraph(MainGraph g) {
+		this.g = g;
+	}	
 	public GridGraph(MainGraph g, Grid grid) {
 		this.g = g;
 		this.grid = grid;
+	}	
+	public void setGrid(Grid grid){
+		this.grid = grid;
+	}
+	public Grid getGrid(){
+		return grid;
+	}
+	
+	public void draw(){
+		
 		s = new float[]{(float) grid.getMinPt().getLon(),(float) grid.getMinPt().getLat()};
 		e = new float[]{(float) grid.getMaxPt().getLon(),(float) grid.getMaxPt().getLat()};
 		dX = grid.getLonRaster().floatValue();
 		dY = grid.getLatRaster().floatValue();
 		
-	}	
-	public void draw(){
-		drawGrid();
-		colorCells();
-		//drawNumbers();
+		if(paintGrid)
+			drawGrid();
+		if(paintDensity)
+			paintDensity();
+		if(paintNumbers)
+			drawNumbers();
 		
 	}
 	
@@ -64,7 +79,7 @@ public class GridGraph{
 			}
 		}
 	}
-	public void colorCells(){
+	public void paintDensity(){
 		int[] l = grid.getAllSizeOfCells();
 		long mean = 0;
 		for(int i : l)
@@ -84,6 +99,7 @@ public class GridGraph{
 	    			   }; 
 	    Arrays.sort(l);
 		g.rectMode(g.CORNERS);  // Set rectMode to CORNERS
+		g.noStroke();
 		int c=0;
 		for(int i=0; i < grid.getRowNo(); i++){
 			for(int j=0; j < grid.getColumnNo(); j++){
@@ -103,7 +119,7 @@ public class GridGraph{
 					c=4;					
 				}
 				if(grid.getRow(i).get(j).size() == l[l.length-1])
-					g.fill(g.color(255,255,255,255));				
+					g.fill(g.color(255,0,255,255));				
 				else
 					g.fill(color[c]);
 				
@@ -112,4 +128,24 @@ public class GridGraph{
 		}
 		g.rectMode(g.CORNER);
 	}
+	
+	public boolean isPaintGrid() {
+		return paintGrid;
+	}
+	public void setPaintGrid(boolean paintGrid) {
+		this.paintGrid = paintGrid;
+	}
+	public boolean isPaintNumbers() {
+		return paintNumbers;
+	}
+	public void setPaintNumbers(boolean paintNumbers) {
+		this.paintNumbers = paintNumbers;
+	}
+	public boolean isPaintDensity() {
+		return paintDensity;
+	}
+	public void setPaintDensity(boolean paintDensity) {
+		this.paintDensity = paintDensity;
+	}
+	
 }

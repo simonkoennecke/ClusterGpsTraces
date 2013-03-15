@@ -2,7 +2,6 @@ package cluster;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -16,8 +15,14 @@ public class Cluster implements Iterable<Traces>{
 	 * centroid sind die Zentren der Cluster
 	 */	
 	private ArrayList<Trace> centroid;
+	private Traces centroidTraces;
+	/**
+	 * Anzahl der Cluster
+	 */
+	private int size = -1;
 	
-	public Cluster(){
+	public Cluster(int k){
+		size = k;
 		cluster = new HashMap<Integer, Traces>();
 		centroid = new ArrayList<Trace>();
 	}
@@ -43,21 +48,32 @@ public class Cluster implements Iterable<Traces>{
 		return centroid.get(clusterId);
 	}
 	public Traces getCentroid(){
-		Traces tmp = new Traces();
-		for(Trace t : centroid){
-			tmp.addTrace(t);
+		if(centroidTraces == null || centroidTraces.size() != centroid.size()){
+			centroidTraces = new Traces();
+			for(Trace t : centroid){
+				centroidTraces.addTrace(t);
+			}
 		}
-		return tmp;
+		return centroidTraces;
 	}
-	
 	@Override
 	public Iterator<Traces> iterator() {
-		Collection c = cluster.values();
-	    Iterator itr = c.iterator();
+		Collection<Traces> c = cluster.values();
+	    Iterator<Traces> itr = c.iterator();
 		return itr;
 	}
 	
 	public ArrayList<Trace> iteratorCentroid(){
 		return centroid;
+	}
+
+	
+	public int getSize() {
+		if(size == -1)
+			setSize(centroid.size());
+		return size;
+	}
+	public void setSize(int size) {
+		this.size = size;
 	}
 }

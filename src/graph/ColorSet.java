@@ -14,6 +14,9 @@ public class ColorSet extends PApplet{
 		/* Rot #ff1e00, Gelb #e1ff00, Grün #00ff1e, Türkis #00e1ff, Blau #1e00ff, Lila #ff00e1 */
 		color = new int[]{color(50, 50, 50), color(255, 30, 0), /*color(225, 255, 0),*/ color(0, 255, 30), /*color( 0, 225, 255),*/ color(30, 0, 255), color( 255, 0, 200)};
 	}
+	public int getColor(int ptr){
+		return color[ptr % color.length];
+	}
 	public int getColor(){
 		return color[ptr];
 	}

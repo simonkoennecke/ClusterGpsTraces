@@ -13,6 +13,7 @@ import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
+import org.apache.log4j.jmx.Agent;
 
 
 import com.infomatiq.jsi.Rectangle;
@@ -105,10 +106,16 @@ public class FindTraceIntersections {
 								List<clsIntersection> intersectionList = traceToIntersection.get(i);
 								Integer intersectionPointIndex = intersections.size()-1;
 								if(intersectionList != null)
-									intersectionList.add(new clsIntersection(intersections.get(intersectionPointIndex), intersectionPointIndex));
+									intersectionList.add(new clsIntersection(
+														intersections.get(intersectionPointIndex), 
+														intersectionPointIndex, i, j, p1)
+													);
 								else{
 									intersectionList = new ArrayList<clsIntersection>();
-									intersectionList.add(new clsIntersection(intersections.get(intersectionPointIndex), intersectionPointIndex));
+									intersectionList.add(new clsIntersection(
+															intersections.get(intersectionPointIndex), 
+															intersectionPointIndex, i, j, p1)
+														);
 									traceToIntersection.put(i, intersectionList);
 								}								
 							}
@@ -121,12 +128,15 @@ public class FindTraceIntersections {
 			}
 			i++;
 		}
-		Debug.syso("Spuren teilen");
-		for(Map.Entry<Integer, List<clsIntersection>> c : traceToIntersection.entrySet()){			
-			Collections.sort(c.getValue());
-			splitAtIndexAndAddPoint(t.get(c.getKey()), c.getValue(), vId);
-		}
 		
+		Debug.syso("Spuren teilen an " + intersections.size());
+		Integer cnt = 0;
+		for(Map.Entry<Integer, List<clsIntersection>> c : traceToIntersection.entrySet()){			
+			cnt += splitAtIndexAndAddPoint(t.get(c.getKey()), c.getValue(), vId);
+		}
+		Debug.syso("Die Spuren wurden geteit an " + cnt + " Stellen geteilt.");
+		
+		/*
 		//const float boundingBoxSize;
 		Debug.syso("Schnittpunkte indecieren");
 		i=0;
@@ -142,7 +152,7 @@ public class FindTraceIntersections {
 		for(i=1; i <= noOfIteration; i++)
 			dedectIntersection(siEdges, siIntersections, intersections, maxDistance*i);
 		
-		/*
+		
 		Debug.syso("Berechne Nachbarschaften");
 		List<PTIntProcedure> procList = new LinkedList<PTIntProcedure>();
 		while(!intersections.isEmpty()){
@@ -258,32 +268,87 @@ public class FindTraceIntersections {
 	static class clsIntersection implements Comparable<clsIntersection>{
 		public Circle circle;
 		public Integer index;
-		public clsIntersection(Circle circle, Integer intersectionPointIndex) {
+		public Integer traceId;
+		public Integer tracePointIndex;
+		public Point tracePoint;
+		public clsIntersection(Circle circle, int intersectionPointIndex,int traceId, int tracePointIndex, Point pt) {
 			this.circle=circle;
 			index=intersectionPointIndex;
+			this.tracePointIndex = tracePointIndex;
+			this.tracePoint = pt;
 		}
+		/**
+		 * Die Funktion hilft bei der Erstellung von der Schnittreihenfolge
+		 * einer Spur.
+		 * Als erstes wird der Kanten Index verglichen, sollte der gleich sein
+		 * ist die Distanz vom Kantenanfang das nachfolgende Kriterium
+		 */
 		@Override
 		public int compareTo(clsIntersection arg0) {
-			return index.compareTo(arg0.index);
+			if(arg0.tracePointIndex != tracePointIndex)
+				return tracePointIndex.compareTo(arg0.tracePointIndex);
+			else{
+				double distTracePtToIter = PtOpSphere.dist(tracePoint, circle.pt);
+				double distTracePtToIterFromArg = PtOpSphere.dist(tracePoint, arg0.circle.pt);
+				double s = distTracePtToIter - distTracePtToIterFromArg;
+				if(s == 0)
+					return 0;
+				else if(s < 0){
+					return -1;
+				}
+				else if(s > 0){
+					return 1;
+				}
+			}
+			return 0;
 		}
 		public String toString(){
-			return "@clsIntersection(" + index + "," + circle +")";
+			//return "@Intrsec(" + index + "," + circle +")";
+			return "( " + tracePointIndex + ", " + PtOpSphere.dist(tracePoint, circle.pt) + ")";
 		}
 		
 	}
-	public static void splitAtIndexAndAddPoint(Trace t, List<clsIntersection> splitPoints, int vId){
+	/**
+	 * Zerlegt eine Spur an den splitPoints
+	 * @param t
+	 * @param splitPoints 
+	 * @param vId Die Versions für die neuen Subtraces
+	 * @return Anzahl der Spurtrenung die durch geführt wurden
+	 */
+	public static int splitAtIndexAndAddPoint(Trace t, List<clsIntersection> splitPoints, int vId){
+		//Die Kreuzende Punkte müssen geordnet werden
+		Collections.sort(splitPoints);
+		//Neuen Subtrace anlegen (es kann ggf. ein Subtrace erzeugt werden, obwohl keine veränderung vorliegt)
 		Trace tmpTrace=t.addSubTraces(vId);
-		int index = 0; 
+		//c ist der Counter wie oft tatsächlich getrennt wurde
+		int c = 0;
+		//Index auf die nächste Trennung
+		int index = 0;
+		int crtIndex = splitPoints.get(index).tracePointIndex;
+		//Die Flag zeigt an, ob weitere Trennungen für diese Linie Vorliegen
+		boolean flag = true;
 		for(int i=0; i < t.size()-1; i++){
 			tmpTrace.addPoint(t.get(i));
-			if(i==splitPoints.get(index).index){
+			//Eine Kannte öfteres geschnietten werden, daher while
+			while(i == crtIndex){
+				c += 1;
 				tmpTrace.addPoint(splitPoints.get(index).circle.pt);
 				tmpTrace=t.addSubTraces(vId);
 				tmpTrace.addPoint(splitPoints.get(index).circle.pt);
-				if(++index == splitPoints.size())
-					index=0;
+				//Sind noch Trennungen vorhanden
+				if(flag && ++index == splitPoints.size()){
+					index=splitPoints.size(); // Es soll ein Fehler produzieren, wenn der index nochmal verwendet wird.
+					crtIndex = -1;//Darf nicht mehr auf ein gültigen Index zeigen
+					flag = false;
+				}
+				//nächsten Trennungspunkt
+				else{
+					crtIndex = splitPoints.get(index).tracePointIndex;
+				}
 			}
 		}
+		
+		return c;
 	}
 	/**
 	 * Soll einen gewissen Bereich von den Trace ausschneiden

@@ -14,7 +14,7 @@ public class DrawTraces {
 	
 	private int lineColor, lineWeight=1;
 	
-	private ColorSet c = new ColorSet();
+	private boolean paintTraces = true;
 	
 	public DrawTraces(MainGraph g, GpxFile gpx){
 		this.gpx = gpx;
@@ -25,6 +25,16 @@ public class DrawTraces {
 		this.g = g;
 		lineColor = g.color(0,0,0);//g.color(255,255,255);
 	}
+	
+	
+	
+	public GpxFile getGpx() {
+		return gpx;
+	}
+	public void setGpx(GpxFile gpx) {
+		this.gpx = gpx;
+	}
+	
 	private void drawArrow(Point p1, Point p2){
 		g.stroke(lineColor);
 		g.strokeWeight(lineWeight);
@@ -56,29 +66,34 @@ public class DrawTraces {
 		lineWeight = w;
 	}
 	public void draw(){
-		draw(gpx.getTraces());
-		drawStartAndEndPointFromTrace(gpx.getTraces());
+		if(paintTraces){
+			draw(gpx.getTraces());
+			drawStartAndEndPointFromTrace(gpx.getTraces());
+		}
 	}
 	public void draw(Traces traces){
-		//Alle Spuren ziechen
+		//Alle Spuren zeichnen
 		for(Trace t : traces){		  
 			if(t.getSubTraces().size()>0){
 				this.draw(t.getSubTraces());
 				continue;
 			}
-			if(t.size() < 2)
+			draw(t);
+		}
+	}
+	public void draw(Trace t){	  
+		if(t.size() < 2)
+			return;
+		
+		Point p1 = null;
+		
+		for(Point p2 : t){
+			if(p1 == null){
+				p1 = p2;
 				continue;
-			
-			Point p1 = null;
-			
-			for(Point p2 : t){
-				if(p1 == null){
-					p1 = p2;
-					continue;
-				}
-				drawArrow(p1,p2);
-				p1=p2;
 			}
+			drawArrow(p1,p2);
+			p1=p2;
 		}
 	}
 	public void drawStartAndEndPointFromTrace(Traces traces){
@@ -101,4 +116,11 @@ public class DrawTraces {
 			
 		}
 	}
+	public boolean isPaintTraces() {
+		return paintTraces;
+	}
+	public void setPaintTraces(boolean paintTraces) {
+		this.paintTraces = paintTraces;
+	}
+	
 }

@@ -100,6 +100,10 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 		}		
 		return d;
 	}
+	/**
+	 * Ermittelt die minimale Distanz die zwischen zwei Punkten auf der Spur bestehen kann
+	 * @return Minimale Distanz in Meter
+	 */
 	public double getMinDistance(){
 		double d = Double.MAX_VALUE;
 		Point p = null;
@@ -122,7 +126,7 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 		return d;
 	}
 
-	public boolean getDisplay() {
+	public boolean isDisplay() {
 		return displayOnScreen;
 	}
 

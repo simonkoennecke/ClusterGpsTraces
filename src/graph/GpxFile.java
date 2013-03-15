@@ -34,8 +34,8 @@ public class GpxFile {
 	}
 	public GpxFile(){
 		//this("C:\\Users\\Simon\\workspace\\ClusterGpsTraces\\GpxFiles\\test04.gpx");
-		this("C:\\Users\\Simon\\workspace\\ClusterGpsTraces\\GpxFiles\\berlin.gpx");
-		//this("/berlin.gpx", true);
+		//this("C:\\Users\\Simon\\workspace\\ClusterGpsTraces\\GpxFiles\\berlin.gpx");
+		this("/berlin.gpx", true);
 	}
 	
 	public Traces getTraces(){
