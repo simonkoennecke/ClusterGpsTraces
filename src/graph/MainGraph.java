@@ -3,6 +3,8 @@ package graph;
 import java.awt.Dimension;
 import java.util.List;
 
+import core.Debug;
+
 import merg.Grid;
 
 import cluster.Cluster;
@@ -30,7 +32,7 @@ public class MainGraph extends PApplet {
 	
 	private boolean paintIntersections = false, paintGrid = false;
 	
-	private List<FindTraceIntersections.Circle> intersections;
+	private List<FindTraceIntersections.Box> intersections;
 	
 	private GridGraph gridGraph = new GridGraph(this);
 	
@@ -106,11 +108,11 @@ public class MainGraph extends PApplet {
 		return y.floatValue()+(windowBorder/2);
 	}
 	
-	public void setIntersections(List<FindTraceIntersections.Circle> c){
+	public void setIntersections(List<FindTraceIntersections.Box> c){
 		intersections = c;
 		paintIntersections = true;		
 	}
-	public List<FindTraceIntersections.Circle> getIntersections(){
+	public List<FindTraceIntersections.Box> getIntersections(){
 		return intersections;		
 	}
 	public void draw() {
@@ -128,28 +130,34 @@ public class MainGraph extends PApplet {
 		if(paintGrid){
 			gridGraph.draw();		
 		}
+		
 		if(paintIntersections){
-			this.ellipseMode(CENTER);
+			int countIntersections = 0;
+			this.rectMode(CENTER);
 			strokeWeight(3);
 			this.stroke(this.color(255,0,0,255));
 			this.fill(this.color(255,0,255));
 			this.noFill();
-			for(FindTraceIntersections.Circle c : intersections){
+			for(FindTraceIntersections.Box c : intersections){
 				if(!c.isOverlapping){
-					float d = (float) (this.lon(new Point(c.pt.getLon()-c.r, c.pt.getLat())) - this.lon(new Point(c.pt.getLon()+c.r, c.pt.getLat())));
+					countIntersections++;
+					float d = (float) (this.lon(new Point(c.pt.getLon()-(c.rec.width()/2), c.pt.getLat()-(c.rec.height()/2))) - this.lon(new Point(c.pt.getLon(), c.pt.getLat())));
 					d = Math.abs(d);
-					d = d * 0.5f;
-					this.ellipse(this.lon(c.pt), this.lat(c.pt), d,d);
+					//d = d * 0.5f;
+					this.rect(this.lon(c.pt), this.lat(c.pt), d,d);
 				}
-			}
+			}/*
 			strokeWeight(1);
 			this.stroke(this.color(0,0,0,255));
 			this.fill(this.color(255,0,255));
-			for(FindTraceIntersections.Circle c : intersections){
+			for(FindTraceIntersections.Box c : intersections){
 				if(c.isOverlapping){
-					this.ellipse(this.lon(c.pt), this.lat(c.pt), 3,3);
+					this.rect(this.lon(c.pt), this.lat(c.pt), 3,3);
 				}
 			}
+			*/
+			rectMode(CORNER);
+			Debug.syso("Kreuzungen: " + countIntersections);
 		}
 		
 		//stroke(color(255,0,0));

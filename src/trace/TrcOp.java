@@ -21,7 +21,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import trace.FindTraceIntersections.Circle;
+import trace.FindTraceIntersections.Box;
 
 import core.Debug;
 import gnu.trove.TIntProcedure;
@@ -446,7 +446,7 @@ public class TrcOp {
 		}
 	}
 	
-	public static List<Circle> getIntersections(Traces _t, double maxDistance, int noOfIteration){
+	public static List<Box> getIntersections(Traces _t, double maxDistance, int noOfIteration){
 		return FindTraceIntersections.getIntersections(_t, maxDistance, noOfIteration);
 	}
 	/**

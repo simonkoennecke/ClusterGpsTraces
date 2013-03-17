@@ -5,7 +5,7 @@ import java.util.List;
 
 import gnu.trove.TIntProcedure;
 
-class PTIntProcedure implements TIntProcedure {
+class PTIntProcedure implements TIntProcedure, Comparable<PTIntProcedure> {
 	private Integer lastId = null;
 	private Integer counter = 0;
 	private Point intersection;
@@ -46,5 +46,10 @@ class PTIntProcedure implements TIntProcedure {
 		else
 			return "(" + intersection + ", " + counter + ")";
 		
+	}
+
+	@Override
+	public int compareTo(PTIntProcedure o) {
+		return counter.compareTo(o.getCountNearestNeighbours());
 	}
 }

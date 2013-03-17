@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -42,7 +43,7 @@ public class FindTraceIntersections {
 	}
 	
 	
-	public static List<Circle> getIntersections(Traces _t, double maxDistance, int noOfIteration){		
+	public static List<Box> getIntersections(Traces _t, double maxDistance, int noOfIteration){		
 		Integer vId = Trace.getIncrementVersionId();
 		Traces t = TrcOp.getTraces(_t);
 		
@@ -85,11 +86,11 @@ public class FindTraceIntersections {
 		}
 		
 		Debug.syso("Ermittel alle Schnittpunkte");
-		List<Circle> intersections = new ArrayList<Circle>();		 
+		List<Box> intersections = new ArrayList<Box>();		 
 		Map<Integer, List<clsIntersection>> traceToIntersection = new HashMap<Integer, List<clsIntersection>>();
-		i=0;
+		i=0;//Trace Id
 		for(Trace t1 : t){
-			j=0;
+			j=0;//Point Index
 			p1 = null;
 			for(Point p2 : t1){
 				if(p1 == null){
@@ -99,11 +100,18 @@ public class FindTraceIntersections {
 					PTIntProcedure proc = new PTIntProcedure(p1);			
 					com.infomatiq.jsi.Point point = new com.infomatiq.jsi.Point((float) p1.getLon(), (float) p1.getLat());
 					siEdges.nearest(point, proc, (float) (PtOpPlane.dist(p1, p2)* 1.2) );
+					//Prüfe ob die nahe liegende Kanten schneiden
 					for(Integer crtEdgeId : proc.getNearestNeighbours()){
+						//Hole die Information über die Kante (beim RTree kann man nur ids hinterlegen und keine Referenzen...)
 						EdgeToTrace eTT = edgeToTrace.get(crtEdgeId);
-						if(i != eTT.traceId){//Die gleiche Spur muss nicht mit sich selbst verglichen werden
+						//Die gleiche Spur muss nicht mit sich selbst verglichen werden
+						if(i != eTT.traceId){
+							//Schneiden sich die beiden Kanten?
 							if(isEdgeIntersectEdge(intersections, t1, t.get(eTT.traceId), j, eTT.pointId)){
+								//Ja und füge zur Map "traceToIntersection" hinzu, um eine einfach Trennung an den Punkt vor zu nehmen.
 								List<clsIntersection> intersectionList = traceToIntersection.get(i);
+								
+								//Gib den Index der
 								Integer intersectionPointIndex = intersections.size()-1;
 								if(intersectionList != null)
 									intersectionList.add(new clsIntersection(
@@ -129,6 +137,7 @@ public class FindTraceIntersections {
 			i++;
 		}
 		
+		//Zerlege die Spuren
 		Debug.syso("Spuren teilen an " + intersections.size());
 		Integer cnt = 0;
 		for(Map.Entry<Integer, List<clsIntersection>> c : traceToIntersection.entrySet()){			
@@ -136,143 +145,87 @@ public class FindTraceIntersections {
 		}
 		Debug.syso("Die Spuren wurden geteit an " + cnt + " Stellen geteilt.");
 		
-		/*
+		//Berechne Minimale Bounding Box
 		//const float boundingBoxSize;
 		Debug.syso("Schnittpunkte indecieren");
 		i=0;
-		for(Circle c : intersections){
-			Rectangle rec = new Rectangle();
-			rec.set((float) (c.pt.getLon()-c.r), (float) (c.pt.getLat()-c.r), (float) (c.pt.getLon()+c.r), (float) (c.pt.getLat()+c.r));			
-			siIntersections.add(rec,i);
+		for(Box c : intersections){
+			siIntersections.add(c.rec,i);
 			i++;
 		}
 		
-		
-		Debug.syso("Schnittbereich berechnen");		
-		for(i=1; i <= noOfIteration; i++)
-			dedectIntersection(siEdges, siIntersections, intersections, maxDistance*i);
-		
-		
 		Debug.syso("Berechne Nachbarschaften");
-		List<PTIntProcedure> procList = new LinkedList<PTIntProcedure>();
-		while(!intersections.isEmpty()){
-			Point pt = intersections.pop();
-			PTIntProcedure proc = new PTIntProcedure(pt);
-			procList.add(proc);			
-			com.infomatiq.jsi.Point point = new com.infomatiq.jsi.Point((float) pt.getLon(), (float) pt.getLat());
-			si.nearest(point, proc, maxDistance);
+		List<PTIntProcedure> procList = new ArrayList<PTIntProcedure>();
+		for(i=0; i < intersections.size(); i++){
+			findNeighbours(siIntersections, intersections, procList, intersections.get(i));
 		}
+		
 		Debug.syso("Berechne Nachbarschaften");
-		LinkedList<Point> ret = new LinkedList<Point>();
-		for(PTIntProcedure proc : procList){
-			Debug.syso(proc.toString());
-			if(proc.getCountNearestNeighbours() >= minNeighbours){
-				for(Integer traceId : proc.getNearestNeighbours()){
-					//Traces an der Kreuzung bzw. das Quadrat aussparen 
-					Point pt = proc.getIntersectionPoint();
-					ret.add(pt);
-					final float r = maxDistance/2;
-					double[] recX = new double[]{pt.getLon()-r,pt.getLon()+r,pt.getLon()+r,pt.getLon()-r};
-					double[] recY = new double[]{pt.getLat()+r,pt.getLat()+r,pt.getLat()-r,pt.getLat()-r};
-					//excludeRectangleFromTrace(t.get(traceId), recX, recY,  maxDistance, vId);
-					
-					//Alle Punkte die im Quadrat liegen aus der Liste von den erkannten Kreuzungen entfernen,
-					//da die Kreuzung schon erkannt wurde
-					for(int i=intersections.size()-1; i >= 0; i--){
-						Point ptI = intersections.get(i);
-						if(Geometry.isPointInsidePolygon(recX,recY, ptI.getLat(), ptI.getLon())){
-							intersections.remove(i);
-						}
+		//Fange mit den Punkten an mit den meisten Nachbarn
+		Collections.sort(procList);
+		PTIntProcedure proc;
+		Box a, b;
+		Debug.syso("Anzahl von Kreuzende Spuren " + intersections.size());
+		int count = procList.size(); 
+		for(i=0; i < count; i++){
+			proc = procList.get(i);
+			a = intersections.get(i);
+			if(!a.isOverlapping){
+				for(Integer intersectionsId : proc.getNearestNeighbours()){
+					b = intersections.get(intersectionsId);
+					if(!b.isOverlapping && i != intersectionsId && a.rec.intersects(b.rec) && a.rec.containedBy(b.rec)){
+						a.isOverlapping = true;
+						b.isOverlapping = true;
+						siIntersections.delete(b.rec, intersectionsId);
+						siIntersections.delete(a.rec, i);
+						
+						Box c = new Box(a);
+						c.merg(b);
+						siIntersections.add(c.rec, intersections.size());
+						intersections.add(c);
+						
 					}
 				}
 			}
-			
-		}*/
+			if(--noOfIteration > 0){
+				count = intersections.size();
+				Debug.syso("Aktualisiere die Anzahl der Nachbarn");
+				for(int s=i+1; s < count; s++)
+					findNeighbours(siIntersections, intersections, procList, intersections.get(s));
+			}
+		}
+		Debug.syso("Anzahl: " + procList.size());
 		return intersections;
 		
 	}
-	private static void dedectIntersection(SpatialIndex siEdges, SpatialIndex siIntersections, List<Circle> intersections, double maxDistance){
-		int i=0; 
-		int cntIntersection = intersections.size()-1;
-		while(i < cntIntersection){
-			Circle c = intersections.get(i);
-			if(!c.isOverlapping){
-				PTIntProcedure proc = new PTIntProcedure(c.pt);			
-				com.infomatiq.jsi.Point point = new com.infomatiq.jsi.Point((float) c.pt.getLon(), (float) c.pt.getLat());
-				siEdges.nearest(point, proc, (float) (c.r * 1.2));
-				if(proc.getCountNearestNeighbours() > 2){
-					/*
-					//METHODE 1:
-					List<Circle> tmpList = new ArrayList<Circle>();
-					tmpList.add(c);
-					for(Integer intersectionId : proc.getNearestNeighbours()){
-						//Der Kreis soll nur einmal betrachtet werden
-						if(!intersections.get(intersectionId).isOverlapping){
-							//Die Kreiszenteren sollen nur 20 Meter von einander entfernt liegen
-							double dist = PtOpPlane.dist(c.pt, intersections.get(intersectionId).pt);							
-							//Debug.syso("Dist: " + dist + " < " + maxDistance);
-							if(dist < maxDistance){
-								tmpList.add(intersections.get(intersectionId));
-								intersections.get(intersectionId).isOverlapping = true;
-								c.isOverlapping = true;
-							}
-						}
-					}
-					intersections.add(minimumBoundingCircleForCircles(tmpList));
-					//ENDE METHODE 1
-					*/
-					/**/
-					//METHODE 2:
-					Rectangle rec = new Rectangle();
-					//Loesche den Eintrag Kreis
-					rec.set((float) (c.pt.getLon()-c.r), (float) (c.pt.getLat()-c.r), (float) (c.pt.getLon()+c.r), (float) (c.pt.getLat()+c.r));
-					siIntersections.delete(rec,i);					
-					
-					for(Integer intersectionId : proc.getNearestNeighbours()){
-						Circle c2 = intersections.get(intersectionId);
-						if(i != intersectionId || !c2.isOverlapping || proc.getCountNearestNeighbours() > 0){
-							rec.set((float) (c2.pt.getLon()-c2.r), (float) (c2.pt.getLat()-c2.r), 
-									(float) (c2.pt.getLon()+c2.r), (float) (c2.pt.getLat()+c2.r));			
-							siIntersections.delete(rec,intersectionId);
-							c2.isOverlapping = true;
-							//c = mergCircle(c, c2);
-							//c = minimalEnclosingCircle(c, c2);
-							double dist = PtOpPlane.dist(c.pt, intersections.get(intersectionId).pt);							
-							//Debug.syso("Dist: " + dist + " < " + maxDistance);
-							//if(dist < maxDistance){
-								c.isOverlapping = true;
-								c = circleFrom2Circles(c, c2);
-							//}							
-						}					
-					}
-					
-					
-					int circleIntersectionId = intersections.size();
-					intersections.add(c);						
-					rec.set((float) (c.pt.getLon()), (float) (c.pt.getLat()), 
-							(float) (c.pt.getLon()), (float) (c.pt.getLat()));
-					
-					siIntersections.add(rec, circleIntersectionId);
-					//ENDE METHODE 2
-					/**/ 
-					
-				}
-			}
-			i++;
-			//cntIntersection = intersections.size()-1;
-		}
-		for(i=0; i < cntIntersection; i++){
-			intersections.get(i).isOverlapping = true;
-		}
+	/**
+	 * 
+	 * @param siIntersections
+	 * @param intersections
+	 * @param procList
+	 * @param b
+	 */
+	public static void findNeighbours(SpatialIndex siIntersections, List<Box> intersections, List<PTIntProcedure> procList, Box b){
+		Point pt = b.pt;
+		PTIntProcedure proc = new PTIntProcedure(pt);
+		procList.add(proc);			
+		com.infomatiq.jsi.Point point = new com.infomatiq.jsi.Point((float) pt.getLon(), (float) pt.getLat());
+		siIntersections.nearest(point, proc, (float) b.getRedius());
 	}
+	
+	
+	/**
+	 * 
+	 * @author Simon Könnecke
+	 */
 	static class clsIntersection implements Comparable<clsIntersection>{
-		public Circle circle;
+		public Box box;
 		public Integer index;
 		public Integer traceId;
 		public Integer tracePointIndex;
 		public Point tracePoint;
-		public clsIntersection(Circle circle, int intersectionPointIndex,int traceId, int tracePointIndex, Point pt) {
-			this.circle=circle;
+		public clsIntersection(Box box, int intersectionPointIndex,int traceId, int tracePointIndex, Point pt) {
+			this.box=box;
 			index=intersectionPointIndex;
 			this.tracePointIndex = tracePointIndex;
 			this.tracePoint = pt;
@@ -288,8 +241,8 @@ public class FindTraceIntersections {
 			if(arg0.tracePointIndex != tracePointIndex)
 				return tracePointIndex.compareTo(arg0.tracePointIndex);
 			else{
-				double distTracePtToIter = PtOpSphere.dist(tracePoint, circle.pt);
-				double distTracePtToIterFromArg = PtOpSphere.dist(tracePoint, arg0.circle.pt);
+				double distTracePtToIter = PtOpSphere.dist(tracePoint, box.pt);
+				double distTracePtToIterFromArg = PtOpSphere.dist(tracePoint, arg0.box.pt);
 				double s = distTracePtToIter - distTracePtToIterFromArg;
 				if(s == 0)
 					return 0;
@@ -304,7 +257,7 @@ public class FindTraceIntersections {
 		}
 		public String toString(){
 			//return "@Intrsec(" + index + "," + circle +")";
-			return "( " + tracePointIndex + ", " + PtOpSphere.dist(tracePoint, circle.pt) + ")";
+			return "( " + tracePointIndex + ", " + PtOpSphere.dist(tracePoint, box.pt) + ")";
 		}
 		
 	}
@@ -332,9 +285,9 @@ public class FindTraceIntersections {
 			//Eine Kannte öfteres geschnietten werden, daher while
 			while(i == crtIndex){
 				c += 1;
-				tmpTrace.addPoint(splitPoints.get(index).circle.pt);
+				tmpTrace.addPoint(splitPoints.get(index).box.pt);
 				tmpTrace=t.addSubTraces(vId);
-				tmpTrace.addPoint(splitPoints.get(index).circle.pt);
+				tmpTrace.addPoint(splitPoints.get(index).box.pt);
 				//Sind noch Trennungen vorhanden
 				if(flag && ++index == splitPoints.size()){
 					index=splitPoints.size(); // Es soll ein Fehler produzieren, wenn der index nochmal verwendet wird.
@@ -350,88 +303,19 @@ public class FindTraceIntersections {
 		
 		return c;
 	}
+	
 	/**
-	 * Soll einen gewissen Bereich von den Trace ausschneiden
+	 * 
+	 * @param intersections
+	 * @param t1
+	 * @param t2
+	 * @param p1Index
+	 * @param p2Index
+	 * @return
 	 */
-	private static void excludeRectangleFromTrace(Trace trace, double[] recX, double[] recY, float maxDistance, int vId){
-		boolean insertFlag = true;
-		boolean checkFlag = true;
-		Trace t = trace.addSubTraces(vId);
-		
-		Point2D[] l = trace.getPoints();
-		for(int i=0; i < l.length-1; i++){
-			if(insertFlag){
-				t.addPoint(trace.get(i));
-			}
-			if(checkFlag){
-				double[] points = Geometry.findLinePolygonIntersections(recX, recY, l[i].getX(), l[i].getY(), l[i+1].getX(), l[i+1].getY());
-				if(points == null || points.length == 0){
-					continue;
-				}
-				else if(points.length == 2){
-					t.addPoint(points[0], points[1]);
-					t = trace.addSubTraces(vId);
-					if(insertFlag){
-						insertFlag = false;
-					}
-					else{
-						insertFlag = true;
-						checkFlag = false;
-					}
-				}
-				else if(points.length == 4){
-					checkFlag = false;
-					Point p1 = new Point(points[0],points[1]);
-					Point p2 = new Point(points[2],points[3]);
-					if(PtOpPlane.distance(trace.get(i), p1) < PtOpPlane.distance(trace.get(i), p2)){
-						t.addPoint(p1);
-						t = trace.addSubTraces(vId);
-						t.addPoint(p2);
-					}
-					else{
-						t.addPoint(p2);
-						t = trace.addSubTraces(vId);
-						t.addPoint(p1);
-					}
-				}
-			}
-		}
-	}
-	
-	private static void edgeIntersect(List<Circle> intersections, Trace t1, Trace t2){
-		Point2D[] p1 = t1.getPoints();
-		Point2D[] p2 = t2.getPoints();
-		
-		for(int i=0; i < (p1.length-2); i++){
-			for(int s=0; s < (p2.length-2); s++){
-				isEdgeIntersectEdge(intersections, p1, p2, i, s);
-			}			
-		}
-	}
-	
-	private static void isEdgeIntersectEdge(List<Circle> intersections, Point2D[] p1, Point2D[] p2, int p1Index, int p2Index){
+	private static boolean isEdgeIntersectEdge(List<Box> intersections, Trace t1, Trace t2, int p1Index, int p2Index){
 		double[] coordiants = new double[2];
 		//Überschneiden die beiden Kanten sich überhaupt?
-		int isIntersect = Geometry.findLineSegmentIntersection(p1[p1Index].getX(), p1[p1Index].getY(), p1[p1Index+1].getX(), p1[p1Index+1].getY(), 
-							p2[p2Index].getX(), p2[p2Index].getY(), p2[p2Index+1].getX(), p2[p2Index+1].getY(), coordiants);
-		if(isIntersect == 1){
-			double rad = Geometry.computeAngle(coordiants, new double[]{p1[p1Index].getX(), p1[p1Index].getY()}, new double[]{p2[p2Index].getX(), p2[p2Index].getY()});
-			// der kleinere Winkel zählt
-			if(rad > (Math.PI/2))
-				rad = Math.PI - rad;
-			
-			if(rad > (Math.PI/4)){
-				//Ja, es liegt eine Überschneidung vor
-				intersections.add(new Circle(new Point(coordiants[0], coordiants[1])));
-			}
-			
-		}
-	}
-	
-	private static boolean isEdgeIntersectEdge(List<Circle> intersections, Trace t1, Trace t2, int p1Index, int p2Index){
-		double[] coordiants = new double[2];
-		//Überschneiden die beiden Kanten sich überhaupt?
-		//TODO: Die getX und getY auf getLon und getLat umstellen
 		int isIntersect = Geometry.findLineSegmentIntersection(t1.get(p1Index).getLon(), t1.get(p1Index).getLat(), t1.get(p1Index+1).getLon(), t1.get(p1Index+1).getLat(), 
 				t2.get(p2Index).getLon(), t2.get(p2Index).getLat(), t2.get(p2Index+1).getLon(), t2.get(p2Index+1).getLat(), coordiants);
 		if(isIntersect == 1){
@@ -442,7 +326,7 @@ public class FindTraceIntersections {
 			
 			if(rad > (Math.PI/4)){
 				//Ja, es liegt eine Überschneidung vor
-				intersections.add(new Circle(new Point(coordiants[0], coordiants[1]), t1, t2, p1Index, p2Index));
+				intersections.add(new Box(new Point(coordiants[0], coordiants[1])));
 				return true;
 			}
 		}
@@ -450,267 +334,52 @@ public class FindTraceIntersections {
 	}
 	/**
 	 * Eine Datenstruktur für Kreuzende Kanten.
-	 * Der Begriff Kreis wird hier verwendet, wegen der minimalen Bounding Box.
+	 * Der Begriff Box wird hier verwendet, wegen der minimalen Bounding Box.
 	 * Die Punkte werden als Kreise verstanden und sollen nach und nach zusammen geführt werden.
 	 * @author Simon Koennecke
 	 */
-	public static class Circle{
+	public static class Box{
 		/*
 		 * Diese Attribute sollen helfen Kreuzungen zu erkennen.
 		 */
 		public Point pt;
-		public double r = 0.000002;
 		public int count=1;
 		public boolean isOverlapping=false;
+		public Rectangle rec = new Rectangle();
 		
-		/*
-		 * Information über den Schnittpunkt, welche Spuren und welche Kante betroffen ist.
-		 * Dies Dient zu einer einfachen Zerlegung der Spur in Teil Spuren.
+		public Box(Box b){
+			pt = b.pt;
+			//r = b.r;
+			count = b.count;
+			rec = b.rec;
+		}
+		public Box(){
+			this(new Point(0,0));
+		}
+		public Box(Point p){
+			this(p, 0.0002);
+		}
+		public Box(Point p, double r){
+			pt=p;//this.r=r;
+			rec.set((float) (pt.getLon()-r), (float) (pt.getLat()-r), (float) (pt.getLon()+r), (float) (pt.getLat()+r));
+		}
+		public void merg(Box b){
+			rec.add(b.rec);
+			count++;
+		}
+		/**
+		 * Radius ist vielleicht nicht der richtige Begriff.
+		 * @return
 		 */
-		public Trace t1, t2;
-		public Integer t1Index, t2Index;
-		
-		public Circle(){
-			pt = new Point(0,0);
-		}
-		public Circle(Point p){
-			pt=p;
-		}
-		public Circle(Point p, double r){
-			pt=p;this.r=r;
-		}
-		public Circle(Point p, Trace t1, Trace t2, int t1Index, int t2Index){
-			pt=p;this.t1=t1;this.t2=t2;
-			this.t1Index=t1Index;this.t2Index=t2Index;
+		public float getRedius(){
+			return Math.max(rec.height(), rec.width())/2;
 		}
 		public String toString(){
-			return "@Circle(" + pt+ ", "  + r + ", " + count + ")";
+			return "@Box(" + pt+ ", "  + getRedius() + ", " + count + ")";
 		}
-	}
-	
-	private static Circle mergCircle(Circle one, Circle two){
-		double dx = one.pt.getLon() - two.pt.getLon();
-		double dy = one.pt.getLat() - two.pt.getLat();
-		double dxSq = dx * dx;
-		double dySq = dy * dy;        
-		double circleDistSq = (dxSq + dySq);
-		double r2 = (one.r - two.r);
-	    Circle c = new Circle();
-	    //check if r1 encloses r2
-	    if( r2*r2 >= circleDistSq) {
-	        if(one.r < two.r) {
-	            c.r = two.r;
-	            c.pt = two.pt;	            
-	        } else {
-	        	c.r = one.r;
-	            c.pt = one.pt;
-	        } 
-	    }
-	    else {
-	        double circleDist = Math.sqrt(circleDistSq);
-	        double r = (circleDist + one.r + two.r) / 2.;
-	        c.r = r;
-	        if (circleDist > 0) {
-	            double f = ((r - one.r) / circleDist);
-	            c.pt.setLon(one.pt.getLon() - f * dx);
-	            c.pt.setLat(one.pt.getLat() - f * dy);	            
-	        } else {
-	            c.pt = one.pt;
-	        }
-	    }
-	    c.count = one.count + two.count;
-	    return c;
-	}
-	public static Circle minimalEnclosingCircle(Circle A, Circle B) {
-        double angle = Math.atan2(B.pt.getLat() - A.pt.getLat(), B.pt.getLon() - A.pt.getLon());
-        Point a = new Point((B.pt.getLon() + Math.cos(angle) * B.r), (B.pt.getLat() + Math.sin(angle) * B.r));
-        angle += Math.PI;
-        Point b = new Point((A.pt.getLon() + Math.cos(angle) * A.r), (A.pt.getLat() + Math.sin(angle) * A.r));
-        double rad = Math.sqrt(Math.pow(a.getLon() - b.getLon(), 2) + Math.pow(a.getLat() - b.getLat(), 2)) / 2;
-        if (rad < A.r) {
-            return A;
-        } else if (rad < B.r) {
-            return B;
-        } else {
-            return new Circle( new Point(((a.getLon() + b.getLon()) / 2), ((a.getLat() + b.getLat()) / 2)), rad);
-        }
-    }
-	private static void getAllEdges(Traces edges, Trace t, Integer vId){
-		Point p1=null,p2=null;		
-		for(Point pt : t){			
-			if(p1 == null){
-				p1 = pt;
-				continue;
-			}
-			else if(p2 == null){
-				p2 = pt;
-			}
-			else{
-				p1 = p2;
-				p2 = pt;
-			}
-			Trace tmp = edges.addTrace("Edge " + vId, vId);
-			tmp.addPoint(p1);
-			tmp.addPoint(p2);			
-		}
-	}
-
-	/**
-	 * Quelle: http://stackoverflow.com/questions/6976125/bounding-circle-of-set-of-circles
-	 * Calculates the minimum bounding circle for a set of circles.
-	 * O(n^4)
-	 *
-	 * @param circles A list of 2+ circles.
-	 * @return {cx, cy, radius} of the circle.
-	 */
-	public static Circle minimumBoundingCircleForCircles(List<Circle> circles) {
-
-	    // try every pair and triple
-	    Circle  best = new Circle();
-	    best.r = Double.MAX_VALUE;
-
-	    for (int i = 0; i < circles.size(); i++) {
-	        for (int j = i + 1; j < circles.size(); j++) {
-	            Circle circle = circleFrom2Circles(circles.get(i), circles.get(j));
-	            if (areAllCirclesInOrOnCircle(circles, circle) &&
-	                circle.r < best.r) {
-	                best.pt = circle.pt;
-	                best.r = circle.r;
-	            }
-
-	            for (int k = j + 1; k < circles.size(); k++) {
-	                int[] signs = new int[]{-1, 1, 1, 1};
-	                circle = apollonius(circles.get(i), circles.get(j), circles.get(k),
-	                                    signs);
-	                if (areAllCirclesInOrOnCircle(circles, circle) &&
-	                    circle.r < best.r) {
-	                    best.pt = circle.pt;
-	                    best.r = circle.r;
-	                }
-	            }
-	        }
-	    }
-
-	    return best;
-	}
-
-    private static boolean areAllCirclesInOrOnCircle(List<Circle> circles, Circle circle) {
-        for (int i = 0; i < circles.size(); i++) {
-            if (!isCircleInOrOnCircle(circles.get(i), circle))
-            	return false;
-        }
-        return true;
-    };
-	/**
-	 * Calculates a circle from 2 circles.
-	 *
-	 * @param circle1 The first circle.
-	 * @param circle2 The second circle.
-	 * @return cx, cy, radius of the circle.
-	 */
-	public static Circle circleFrom2Circles(Circle circle1, Circle circle2) {
-
-	    double angle = Math.atan2(circle1.pt.getLat() - circle2.pt.getLat(),
-	                           circle1.pt.getLon() - circle2.pt.getLon());
-
-	    Point[] lineBetweenExtrema = new Point[]{new Point(circle1.pt.getLon() + circle1.r * Math.cos(angle),
-	                               circle1.pt.getLat() + circle1.r * Math.sin(angle)),
-	                              new Point(circle2.pt.getLon() - circle2.r * Math.cos(angle),
-	                               circle2.pt.getLat() - circle2.r * Math.sin(angle))};
-
-	    Point center = lineMidpoint(lineBetweenExtrema[0], lineBetweenExtrema[1]);
-	    
-	    return new Circle(center, lineLength(lineBetweenExtrema[0],lineBetweenExtrema[1])/2);
-	}
-	
-	
-	
-	/**
-	 * Solve the Problem of Apollonius: a circle tangent to all 3 circles.
-	 * http://mathworld.wolfram.com/ApolloniusProblem.html
-	 *
-	 * @param circle1 The first circle.
-	 * @param circle2 The second circle.
-	 * @param circle3 The third circle.
-	 * @param signs The array of signs to use. [-1, 1, 1, 1] gives max circle.
-	 * @return The tangent circle.
-	 */
-	public static Circle apollonius(Circle circle1, Circle circle2, Circle circle3, int[] signs) {
-
-	    
-	    double a1 = 2 * (circle1.pt.getLon() - circle2.pt.getLon());
-	    double a2 = 2 * (circle1.pt.getLon() - circle3.pt.getLon());
-	    double b1 = 2 * (circle1.pt.getLat() - circle2.pt.getLat());
-	    double b2 = 2 * (circle1.pt.getLat() - circle3.pt.getLat());
-	    double c1 = 2 * (signs[0] * circle1.r + signs[1] * circle2.r);
-	    double c2 = 2 * (signs[0] * circle1.r + signs[2] * circle3.r);
-	    double d1 = (sqr(circle1.pt.getLon()) + sqr(circle1.pt.getLat()) - sqr(circle1.r)) -
-	        (sqr(circle2.pt.getLon()) + sqr(circle2.pt.getLat()) - sqr(circle2.r));
-	    double d2 = (sqr(circle1.pt.getLon()) + sqr(circle1.pt.getLat()) - sqr(circle1.r)) -
-	        (sqr(circle3.pt.getLon()) + sqr(circle3.pt.getLat()) - sqr(circle3.r));
-
-	    // x = (p+q*r)/s; y = (t+u*r)/s
-
-	    double p = b2 * d1 - b1 * d2;
-	    double q = (- b2 * c1) + (b1 * c2);
-	    double s = a1 * b2 - b1 * a2;
-	    double t = - a2 * d1 + a1 * d2;
-	    double u = a2 * c1 - a1 * c2;
-
-	    // you are not expected to understand this.
-	    // It was generated using Mathematica's Solve function.
-	    double det = (2 * (-sqr(q) + sqr(s) - sqr(u)));
-	    double r = (1 / det) * 
-	        (2 * p * q + 2 * circle1.r * sqr(s) + 2 * t * u -
-	         2 * q * s * circle1.pt.getLon() - 2 * s * u * circle1.pt.getLat() + signs[3] *
-	         Math.sqrt(sqr(-2 * p * q - 2 * circle1.r * sqr(s) - 2 * t * u +
-	                       2 * q * s * circle1.pt.getLon() + 2 * s * u * circle1.pt.getLat()) - 
-	                   4 * (-sqr(q) + sqr(s) - sqr(u)) * 
-	                   (-sqr(p) + sqr(circle1.r) * sqr(s) - sqr(t) +
-	                    2 * p * s * circle1.pt.getLon() - sqr(s) * sqr(circle1.pt.getLon()) + 
-	                    2 * s * t * circle1.pt.getLat() - sqr(s) * sqr(circle1.pt.getLat()))));
-	    r = Math.abs(r);
-
-	    double x = (p + q * r) / s;
-
-	    double y = (t + u * r) / s;
-
-	    return new Circle(new Point(x,y), r);
-	}
-	public static double sqr(double x){
-		return Math.pow(x,2);
+		
 		
 	}
-	/**
-	 * Is the circle inside/on another circle?
-	 *
-	 * @param innerCircle the inner circle.
-	 * @param outerCircle the outer circle.
-	 * @return is the circle inside/on the circle?
-	 */
-	public static boolean isCircleInOrOnCircle(Circle innerCircle, Circle outerCircle) {
-		double dist = lineLength(innerCircle.pt, outerCircle.pt);
-		return (dist < outerCircle.r);
-	}
-
-
-	/**
-	 * Calculates the length of a line.
-	 * @param pt1 The first pt.
-	 * @param pt2 The second pt.
-	 * @return The length of the line.
-	 */
-	public static double lineLength(Point pt1, Point pt2) {
-	    return PtOpPlane.dist(pt1, pt2);
-	}
-
-	/**
-	 * Calculates the midpoint of a line.
-	 * @param pt1 The first pt.
-	 * @param pt2 The second pt.
-	 * @return The midpoint of the line.
-	 */
-	public static Point lineMidpoint(Point pt1,Point pt2) {
-	    return new Point((pt1.getLon() + pt2.getLon()) / 2, (pt1.getLat() + pt2.getLat()) / 2);
-	}
+	
+	
 }

@@ -129,6 +129,11 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         item.setActionCommand("loadFile");
         menu.add(item);
         
+        item = new JMenuItem("Rückgängig");
+        item.setActionCommand("redo");
+        item.addActionListener(this);
+        menu.add(item);
+        
         menuBar.add(menu);
         
         /**
@@ -207,11 +212,18 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         menu.add(item);
         createTxtField(menu, 4, "bei einem XTA [Meter]", "200");
         
+        menuBar.add(menu);
         
+        /**
+		 * Menu Punkt: Kreuzungen
+		 */
+        menu = new JMenu("Kreuzungen");
+	     
         item = new JMenuItem("Kreuzungen trennen");
         item.setActionCommand("splitByIntersection");
         item.addActionListener(this);
         menu.add(item);
+        createTxtField(menu, 7, "Anzahl der Iteration:", "4");
         
         //item = new JCheckBoxMenuItem("Kreuzungen anzeigen");
         item = new JMenuItem("Kreuzungen anzeigen/verbergen");
@@ -219,10 +231,7 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         item.addActionListener(this);
         menu.add(item);
         
-        item = new JMenuItem("Rückgängig");
-        item.setActionCommand("redo");
-        item.addActionListener(this);
-        menu.add(item);
+        
         
         menuBar.add(menu);
         
@@ -453,8 +462,8 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 		}			
 		else if(actionCommand == "splitByIntersection"){
 			//double tol = Double.valueOf(txtFields[5].getText());
-			//int no = Integer.valueOf(txtFields[6].getText());
-			graph.setIntersections(TrcOp.getIntersections(gpx.getTraces(), 0.0015, 0));
+			int no = Integer.valueOf(txtFields[7].getText());
+			graph.setIntersections(TrcOp.getIntersections(gpx.getTraces(), 0.0015, no));
 			graph.redraw();
 	        Debug.syso("Repaint");
 		}
