@@ -43,7 +43,7 @@ public class FindTraceIntersections {
 	}
 	
 	
-	public static List<Box> getIntersections(Traces _t, double maxDistance, int noOfIteration){		
+	public static List<Box> getIntersections(Traces _t){		
 		Integer vId = Trace.getIncrementVersionId();
 		Traces t = TrcOp.getTraces(_t);
 		
@@ -54,13 +54,11 @@ public class FindTraceIntersections {
 		rootLogger.setLevel(Level.INFO);
 		rootLogger.addAppender(new ConsoleAppender(new PatternLayout("%-5p [%t]: %m%n")));
 		SpatialIndex siEdges = new RTree();
-		SpatialIndex siIntersections = new RTree();
 		
 		Properties p = new Properties();
 		p.setProperty("MinNodeEntries", "10");
 		p.setProperty("MaxNodeEntries", "50");
 		siEdges.init(p);
-		siIntersections.init(p);
 		Map<Integer, EdgeToTrace> edgeToTrace = new HashMap<Integer, EdgeToTrace>();
 		
 		Debug.syso("Alle Kanten in den Index einfuegen.");
@@ -145,122 +143,12 @@ public class FindTraceIntersections {
 		}
 		Debug.syso("Die Spuren wurden geteit an " + cnt + " Stellen geteilt.");
 		
-		//Berechne Minimale Bounding Box
-		//const float boundingBoxSize;
-		Debug.syso("Schnittpunkte indecieren");
-		i=0;
-		for(Box c : intersections){
-			siIntersections.add(c.rec,i);
-			i++;
-		}
 		
-		Debug.syso("Berechne Nachbarschaften");
-		List<PTIntProcedure> procList = new ArrayList<PTIntProcedure>();
-		for(i=0; i < intersections.size(); i++){
-			findNeighbours(siIntersections, intersections, procList, intersections.get(i));
-		}
 		
-		Debug.syso("Berechne Nachbarschaften");
-		//Fange mit den Punkten an mit den meisten Nachbarn
-		Collections.sort(procList);
-		PTIntProcedure proc;
-		Box a, b;
-		Debug.syso("Anzahl von Kreuzende Spuren " + intersections.size());
-		int count = procList.size(); 
-		for(i=0; i < count; i++){
-			proc = procList.get(i);
-			a = intersections.get(i);
-			if(!a.isOverlapping){
-				for(Integer intersectionsId : proc.getNearestNeighbours()){
-					b = intersections.get(intersectionsId);
-					if(!b.isOverlapping && i != intersectionsId && a.rec.intersects(b.rec) && a.rec.containedBy(b.rec)){
-						a.isOverlapping = true;
-						b.isOverlapping = true;
-						siIntersections.delete(b.rec, intersectionsId);
-						siIntersections.delete(a.rec, i);
-						
-						Box c = new Box(a);
-						c.merg(b);
-						siIntersections.add(c.rec, intersections.size());
-						intersections.add(c);
-						
-					}
-				}
-			}
-			if(--noOfIteration > 0){
-				count = intersections.size();
-				Debug.syso("Aktualisiere die Anzahl der Nachbarn");
-				for(int s=i+1; s < count; s++)
-					findNeighbours(siIntersections, intersections, procList, intersections.get(s));
-			}
-		}
-		Debug.syso("Anzahl: " + procList.size());
 		return intersections;
 		
 	}
-	/**
-	 * 
-	 * @param siIntersections
-	 * @param intersections
-	 * @param procList
-	 * @param b
-	 */
-	public static void findNeighbours(SpatialIndex siIntersections, List<Box> intersections, List<PTIntProcedure> procList, Box b){
-		Point pt = b.pt;
-		PTIntProcedure proc = new PTIntProcedure(pt);
-		procList.add(proc);			
-		com.infomatiq.jsi.Point point = new com.infomatiq.jsi.Point((float) pt.getLon(), (float) pt.getLat());
-		siIntersections.nearest(point, proc, (float) b.getRedius());
-	}
 	
-	
-	/**
-	 * 
-	 * @author Simon Könnecke
-	 */
-	static class clsIntersection implements Comparable<clsIntersection>{
-		public Box box;
-		public Integer index;
-		public Integer traceId;
-		public Integer tracePointIndex;
-		public Point tracePoint;
-		public clsIntersection(Box box, int intersectionPointIndex,int traceId, int tracePointIndex, Point pt) {
-			this.box=box;
-			index=intersectionPointIndex;
-			this.tracePointIndex = tracePointIndex;
-			this.tracePoint = pt;
-		}
-		/**
-		 * Die Funktion hilft bei der Erstellung von der Schnittreihenfolge
-		 * einer Spur.
-		 * Als erstes wird der Kanten Index verglichen, sollte der gleich sein
-		 * ist die Distanz vom Kantenanfang das nachfolgende Kriterium
-		 */
-		@Override
-		public int compareTo(clsIntersection arg0) {
-			if(arg0.tracePointIndex != tracePointIndex)
-				return tracePointIndex.compareTo(arg0.tracePointIndex);
-			else{
-				double distTracePtToIter = PtOpSphere.dist(tracePoint, box.pt);
-				double distTracePtToIterFromArg = PtOpSphere.dist(tracePoint, arg0.box.pt);
-				double s = distTracePtToIter - distTracePtToIterFromArg;
-				if(s == 0)
-					return 0;
-				else if(s < 0){
-					return -1;
-				}
-				else if(s > 0){
-					return 1;
-				}
-			}
-			return 0;
-		}
-		public String toString(){
-			//return "@Intrsec(" + index + "," + circle +")";
-			return "( " + tracePointIndex + ", " + PtOpSphere.dist(tracePoint, box.pt) + ")";
-		}
-		
-	}
 	/**
 	 * Zerlegt eine Spur an den splitPoints
 	 * @param t
@@ -333,6 +221,170 @@ public class FindTraceIntersections {
 		return false;
 	}
 	/**
+	 * 
+	 * @param intersections
+	 * @param noOfIteration
+	 * @return
+	 */
+	public static List<Box> findMinimalBoundindBoxes(List<Box> intersections, int noOfIteration){
+		Debug.syso("Init. RTree.");
+		final Logger rootLogger = Logger.getRootLogger();
+		rootLogger.setLevel(Level.INFO);
+		rootLogger.addAppender(new ConsoleAppender(new PatternLayout("%-5p [%t]: %m%n")));
+		SpatialIndex siIntersections = new RTree();
+		
+		Properties p = new Properties();
+		p.setProperty("MinNodeEntries", "10");
+		p.setProperty("MaxNodeEntries", "50");
+		siIntersections.init(p);
+		
+		Debug.syso("Schnittpunkte indecieren");
+		for(int i=0; i < intersections.size(); i++){
+			siIntersections.add(intersections.get(i).rec,i);
+		}
+		
+		return mergBoundingBox(siIntersections, intersections, noOfIteration);
+	}
+	
+	/**
+	 * 
+	 * @param siIntersections
+	 * @param intersections
+	 * @param noOfIteration
+	 */
+	public static List<Box> mergBoundingBox(SpatialIndex siIntersections, List<Box> intersections, int noOfIteration){
+		if(noOfIteration == 0)
+			return intersections;
+		
+		Debug.syso("Berechne Anzahl der Nachbarschaften.");
+		List<PTIntProcedure> procList = new ArrayList<PTIntProcedure>();
+		for(int i=0; i < intersections.size(); i++){
+			findNeighbours(siIntersections, intersections, procList, intersections.get(i));
+		}
+		
+		Debug.syso("Füge benachbarte Bounding Boxen zusammen.");
+		//Fange mit den Punkten an mit den meisten Nachbarn
+		Collections.sort(procList, Collections.reverseOrder());
+		PTIntProcedure proc;
+		Box a, b;
+		int count = procList.size(); 
+		for(int i=0; i < count; i++){
+			proc = procList.get(i);
+			a = intersections.get(i);
+			if(!a.isOverlapping){
+				for(Integer intersectionsId : proc.getNearestNeighbours()){
+					b = intersections.get(intersectionsId);
+					mergBox(siIntersections, i, intersectionsId, a, b);
+				}
+			}
+		}
+		int isO = 0;
+		int isNO = 0;
+		for(Box box : intersections){
+			if(box.isOverlapping)
+				isO ++;
+			else
+				isNO++;
+		}
+		Debug.syso("Boxen("+isO+","+isNO+")");
+		
+		return mergBoundingBox(siIntersections, intersections, --noOfIteration);
+	}
+	/**
+	 * 
+	 * @param siIntersections
+	 * @param intersections
+	 * @param procList
+	 * @param b
+	 */
+	public static void findNeighbours(SpatialIndex siIntersections, List<Box> intersections, List<PTIntProcedure> procList, Box b){
+		PTIntProcedure proc = new PTIntProcedure(b.pt);
+		procList.add(proc);			
+		siIntersections.nearest(b.rec.centre(), proc, b.getRedius());
+	}
+	/**
+	 * 
+	 * @param siIntersections
+	 * @param i
+	 * @param intersectionsId
+	 * @param a
+	 * @param b
+	 * @param noRec
+	 */
+	private static boolean mergBox(SpatialIndex siIntersections, int i, int intersectionsId, Box a, Box b){
+		if(!b.isOverlapping && i != intersectionsId){ 
+			if(a.rec.intersects(b.rec) || a.rec.containedBy(b.rec) || a.rec.contains(b.rec) ){
+				//Lösche die beiden alten Einträge ausm Index
+				siIntersections.delete(b.rec, intersectionsId);
+				siIntersections.delete(a.rec, i);
+				
+				//Füge merge a und b zu c und Speicher es in a
+				a.merg(b);
+				//Füge die neue Box a in den Index hinzu.
+				siIntersections.add(a.rec, i);
+				
+				return true;
+			}
+		}
+		return false;
+		
+	}
+	/**
+	 * Diese Klasse wird zum Trennen von den Spuren verwendet.
+	 * Dazu werden alle nötige Information hier abgelegt und 
+	 * eine Sortierung für eine schnelle Trennung stellt diese Klasse ebenfalls
+	 * zur Verfügung.
+	 * @author Simon Könnecke
+	 */
+	static class clsIntersection implements Comparable<clsIntersection>{
+		public Box box;
+		public Integer index;
+		public Integer traceId;
+		public Integer tracePointIndex;
+		public Point tracePoint;
+		public clsIntersection(Box box, int intersectionPointIndex,int traceId, int tracePointIndex, Point pt) {
+			this.box=box;
+			index=intersectionPointIndex;
+			this.tracePointIndex = tracePointIndex;
+			this.tracePoint = pt;
+		}
+		/**
+		 * Die Funktion hilft bei der Erstellung von der Schnittreihenfolge
+		 * einer Spur.
+		 * Als erstes wird der Kanten Index verglichen, sollte der gleich sein
+		 * ist die Distanz vom Kantenanfang das nachfolgende Kriterium
+		 */
+		@Override
+		public int compareTo(clsIntersection arg0) {
+			if(arg0.tracePointIndex != tracePointIndex)
+				return tracePointIndex.compareTo(arg0.tracePointIndex);
+			else{
+				double distTracePtToIter = PtOpSphere.dist(tracePoint, box.pt);
+				double distTracePtToIterFromArg = PtOpSphere.dist(tracePoint, arg0.box.pt);
+				double s = distTracePtToIter - distTracePtToIterFromArg;
+				if(s == 0)
+					return 0;
+				else if(s < 0){
+					return -1;
+				}
+				else if(s > 0){
+					return 1;
+				}
+			}
+			return 0;
+		}
+		public String toString(){
+			//return "@Intrsec(" + index + "," + circle +")";
+			return "( " + tracePointIndex + ", " + PtOpSphere.dist(tracePoint, box.pt) + ")";
+		}
+		
+	}
+	
+	public static void killDouble(){
+		
+	}
+	
+	/**
 	 * Eine Datenstruktur für Kreuzende Kanten.
 	 * Der Begriff Box wird hier verwendet, wegen der minimalen Bounding Box.
 	 * Die Punkte werden als Kreise verstanden und sollen nach und nach zusammen geführt werden.
@@ -346,6 +398,7 @@ public class FindTraceIntersections {
 		public int count=1;
 		public boolean isOverlapping=false;
 		public Rectangle rec = new Rectangle();
+		public Box parent;
 		
 		public Box(Box b){
 			pt = b.pt;
@@ -357,15 +410,32 @@ public class FindTraceIntersections {
 			this(new Point(0,0));
 		}
 		public Box(Point p){
-			this(p, 0.0002);
+			this(p, 0.00007);
 		}
 		public Box(Point p, double r){
 			pt=p;//this.r=r;
 			rec.set((float) (pt.getLon()-r), (float) (pt.getLat()-r), (float) (pt.getLon()+r), (float) (pt.getLat()+r));
 		}
 		public void merg(Box b){
+			b.parent = getRootParent();
+			b.isOverlapping = true;
 			rec.add(b.rec);
 			count++;
+			com.infomatiq.jsi.Point p = rec.centre();
+			pt.setLat(p.x);
+			pt.setLon(p.y);
+		}
+		private Box getRootParent(){
+			if(parent != null){
+				Box p = parent;
+				while(p.parent != null){
+					p = p.parent;
+				}
+				return p;
+			}
+			else{
+				return this;
+			}
 		}
 		/**
 		 * Radius ist vielleicht nicht der richtige Begriff.

@@ -141,10 +141,12 @@ public class MainGraph extends PApplet {
 			for(FindTraceIntersections.Box c : intersections){
 				if(!c.isOverlapping){
 					countIntersections++;
-					float d = (float) (this.lon(new Point(c.pt.getLon()-(c.rec.width()/2), c.pt.getLat()-(c.rec.height()/2))) - this.lon(new Point(c.pt.getLon(), c.pt.getLat())));
-					d = Math.abs(d);
+					float x = (float) (this.lon(new Point(c.pt.getLon()-(c.rec.width()), c.pt.getLat())) - this.lon(c.pt));
+					float y = (float) (this.lat(new Point(c.pt.getLon(), c.pt.getLat()-(c.rec.height()))) - this.lat(c.pt));
+					x = Math.abs(x);
+					y = Math.abs(y);
 					//d = d * 0.5f;
-					this.rect(this.lon(c.pt), this.lat(c.pt), d,d);
+					this.rect(this.lon(c.pt), this.lat(c.pt), x,y);
 				}
 			}/*
 			strokeWeight(1);

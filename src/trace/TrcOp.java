@@ -447,7 +447,8 @@ public class TrcOp {
 	}
 	
 	public static List<Box> getIntersections(Traces _t, double maxDistance, int noOfIteration){
-		return FindTraceIntersections.getIntersections(_t, maxDistance, noOfIteration);
+		List<Box> l = FindTraceIntersections.getIntersections(_t);
+		return FindTraceIntersections.findMinimalBoundindBoxes(l, noOfIteration);
 	}
 	/**
 	 * Ermittelt alle zu clusterene Traces.
