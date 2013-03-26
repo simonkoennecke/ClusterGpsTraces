@@ -185,10 +185,13 @@ public class Grid {
 	 * @return GridRow mit den Häufigkeiten, wie viele Punkte in der jeweiligen Zeile liegen
 	 */
 	public GridRow getRow(int colNo){
-		if(grid.containsKey(colNo))
+		if(grid.containsKey(colNo)){
 			return grid.get(colNo);
-		else
-			return null;
+		}
+		else{
+			grid.put(colNo, new GridRow());
+			return grid.get(colNo);
+		}
 	}
 	/**
 	 * Berechnen des Centroid für die Hinzugefügten Traces.
@@ -231,11 +234,15 @@ public class Grid {
 		int r[] = new int[getRowNo()*getColumnNo()];
 		for(int i=0; i < getRowNo(); i++){
 			for(int j=0; j < getColumnNo(); j++){
-				PointList list = getRow(i).get(j);
-				if(list != null)
+				try{
+					PointList list = getRow(i).get(j);
 					r[i*j] = list.size();
-				else
+					
+				}
+				catch (Exception e) {
 					r[i*j] = 0;
+				}
+				
 			}
 		}
 		return r;

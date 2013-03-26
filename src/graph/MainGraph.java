@@ -134,12 +134,13 @@ public class MainGraph extends PApplet {
 		if(paintIntersections){
 			int countIntersections = 0;
 			this.rectMode(CENTER);
-			strokeWeight(3);
+			strokeWeight(1);
 			this.stroke(this.color(255,0,0,255));
 			this.fill(this.color(255,0,255));
 			this.noFill();
+			
 			for(FindTraceIntersections.Box c : intersections){
-				if(!c.isOverlapping){
+				if(!c.isOverlapping){					
 					countIntersections++;
 					float x = (float) (this.lon(new Point(c.pt.getLon()-(c.rec.width()), c.pt.getLat())) - this.lon(c.pt));
 					float y = (float) (this.lat(new Point(c.pt.getLon(), c.pt.getLat()-(c.rec.height()))) - this.lat(c.pt));
@@ -161,6 +162,7 @@ public class MainGraph extends PApplet {
 			rectMode(CORNER);
 			Debug.syso("Kreuzungen: " + countIntersections);
 		}
+		
 		
 		//stroke(color(255,0,0));
 	}

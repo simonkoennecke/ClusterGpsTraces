@@ -30,33 +30,59 @@ import graph.GpxFile;
 
 public class TrcOp {
 	/**
+	 * Lösche eine Spur, wenn die Spur unter distTol liegt
+	 * @param traces
+	 * @param distTol
+	 */
+	public static void deleteTraceWithADistancLess(Traces traces, double distTol){
+		deleteTraceWithADistancLess(traces, distTol, Trace.getIncrementVersionId());
+	}
+	/**
+	 * Lege ein Sub-Trace mit null Punkten, das soll die Spur als gelöscht markieren
+	 * @param traces
+	 * @param distTol
+	 */
+	public static void deleteTraceWithADistancLess(Traces traces, double distTol, Integer vId){
+		double dist=0;
+		
+		for(Trace t : traces){
+			//Wurde der Pfad schon mal zerlegt?
+			//Wenn ja dann nutze den zerlegten Pfad
+			if(t.getSubTraces().size() > 0){
+				deleteTraceWithADistancLess(t.getSubTraces(), distTol, vId);
+				continue;
+			}
+			
+			dist = t.getDistance();
+			if(dist < distTol){
+				//Lege einen Subtrace ohne Punkte an, somit geht der redo button noch
+				t.addSubTraces(vId);
+			}
+		}
+	}
+	public static void splitTraceAfterDistance(Traces traces, double distTol){
+		splitTraceAfterDistance(traces, distTol, Trace.getIncrementVersionId());
+	}
+	/**
 	 * Schneide die Spur nach distTol ab.
 	 * @param traces
 	 * @param distTol
 	 */
-	public static void splitTraceAfterDistance(Traces traces, double distTol){
+	public static void splitTraceAfterDistance(Traces traces, double distTol, Integer vId){
 		double dist=0;//,avgDist=0;
 		Trace crtTrace = null;
-		Integer _vId;
 		//System.out.println("Anzahl der Traces: " + traces.size());
 		
 		for(Trace t : traces){
 			//Wurde der Pfad schon mal zerlegt?
 			//Wenn ja dann nutze den zerlegten Pfad
 			if(t.getSubTraces().size() > 0){
-				splitTraceAfterDistance(t.getSubTraces(), distTol);
+				splitTraceAfterDistance(t.getSubTraces(), distTol, vId);
 				continue;
 			}
 			//avgDist = t.getDistance()/t.size();
 			//System.out.println("AvgDist: "+avgDist + "");
-			if(crtTrace == null){
-				//Erste eine neue Versionsnummer
-				crtTrace = new Trace(t.getName(),null);
-			}
-			else{
-				//Verwende die erstellte Versionsnummer
-				crtTrace = new Trace(t.getName(),crtTrace.getVersionId());
-			}
+			crtTrace = new Trace(t.getName(),crtTrace.getVersionId());
 				
 			
 			Point p1 = null;
@@ -301,9 +327,11 @@ public class TrcOp {
 	    //Sollte der entfernteste Punkt noch in der Toleranz liegen füge die dazwischen liegende Punkte nicht mehr hinzu.
 	    if (maxDistance > tolerance && indexFarthest != 0){
 	        //Add the largest point that exceeds the tolerance
-	    	DouglasPeuckerReduction(points, firstPoint, indexFarthest, tolerance, pointIndexsToKeep);
+	    	if(indexFarthest < lastPoint)
+	    		DouglasPeuckerReduction(points, firstPoint, indexFarthest, tolerance, pointIndexsToKeep);
 	    	pointIndexsToKeep.addPoint(points.get(indexFarthest));
-	        DouglasPeuckerReduction(points, indexFarthest, lastPoint, tolerance, pointIndexsToKeep);
+	        if(indexFarthest > firstPoint)
+	        	DouglasPeuckerReduction(points, indexFarthest, lastPoint, tolerance, pointIndexsToKeep);
 	    }
 	}
 
@@ -447,8 +475,11 @@ public class TrcOp {
 	}
 	
 	public static List<Box> getIntersections(Traces _t, double maxDistance, int noOfIteration){
-		List<Box> l = FindTraceIntersections.getIntersections(_t);
-		return FindTraceIntersections.findMinimalBoundindBoxes(l, noOfIteration);
+		FindTraceIntersections task = new FindTraceIntersections(_t, noOfIteration);
+		task.run();
+		task.findMinimalBoundindBoxes();
+		List<Box> l = task.getIntersections();
+		return l;
 	}
 	/**
 	 * Ermittelt alle zu clusterene Traces.

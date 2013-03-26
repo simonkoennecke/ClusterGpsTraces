@@ -30,8 +30,32 @@ import core.Debug;
  *
  */
 public class FindTraceIntersections {
+	private Traces t;
 	
-	public static class EdgeToTrace{
+	private SpatialIndex siIntersections = new RTree(), siEdges = new RTree();
+	private final Logger rootLogger = Logger.getRootLogger();
+	private List<Box> intersections;
+	private Integer vId = Trace.getIncrementVersionId();
+	private int noOfIteration;
+	
+	FindTraceIntersections(Traces _t, int noOfIteration){
+		this.t = TrcOp.getTraces(_t);
+		this.noOfIteration = noOfIteration;
+		Debug.syso("Init. RTree.");
+		
+		final Logger rootLogger = Logger.getRootLogger();
+		rootLogger.setLevel(Level.INFO);
+		rootLogger.addAppender(new ConsoleAppender(new PatternLayout("%-5p [%t]: %m%n")));
+		
+		
+		Properties p = new Properties();
+		p.setProperty("MinNodeEntries", "10");
+		p.setProperty("MaxNodeEntries", "50");
+		siEdges.init(p);
+		siIntersections.init(p);
+	}
+	
+	public class EdgeToTrace{
 		public Integer pointId;
 		public Integer traceId;
 		public EdgeToTrace(Integer traceId, Integer pointId){
@@ -43,22 +67,9 @@ public class FindTraceIntersections {
 	}
 	
 	
-	public static List<Box> getIntersections(Traces _t){		
-		Integer vId = Trace.getIncrementVersionId();
-		Traces t = TrcOp.getTraces(_t);
-		
+	public void run(){		
 		Debug.syso("Start " + t.countDisplayedTraces() + " with " + t.countPoints() + " Points");
 		
-		Debug.syso("Init. RTree.");
-		final Logger rootLogger = Logger.getRootLogger();
-		rootLogger.setLevel(Level.INFO);
-		rootLogger.addAppender(new ConsoleAppender(new PatternLayout("%-5p [%t]: %m%n")));
-		SpatialIndex siEdges = new RTree();
-		
-		Properties p = new Properties();
-		p.setProperty("MinNodeEntries", "10");
-		p.setProperty("MaxNodeEntries", "50");
-		siEdges.init(p);
 		Map<Integer, EdgeToTrace> edgeToTrace = new HashMap<Integer, EdgeToTrace>();
 		
 		Debug.syso("Alle Kanten in den Index einfuegen.");
@@ -84,7 +95,7 @@ public class FindTraceIntersections {
 		}
 		
 		Debug.syso("Ermittel alle Schnittpunkte");
-		List<Box> intersections = new ArrayList<Box>();		 
+		intersections = new ArrayList<Box>();		 
 		Map<Integer, List<clsIntersection>> traceToIntersection = new HashMap<Integer, List<clsIntersection>>();
 		i=0;//Trace Id
 		for(Trace t1 : t){
@@ -105,7 +116,7 @@ public class FindTraceIntersections {
 						//Die gleiche Spur muss nicht mit sich selbst verglichen werden
 						if(i != eTT.traceId){
 							//Schneiden sich die beiden Kanten?
-							if(isEdgeIntersectEdge(intersections, t1, t.get(eTT.traceId), j, eTT.pointId)){
+							if(isEdgeIntersectEdge(t1, t.get(eTT.traceId), j, eTT.pointId)){
 								//Ja und füge zur Map "traceToIntersection" hinzu, um eine einfach Trennung an den Punkt vor zu nehmen.
 								List<clsIntersection> intersectionList = traceToIntersection.get(i);
 								
@@ -139,14 +150,9 @@ public class FindTraceIntersections {
 		Debug.syso("Spuren teilen an " + intersections.size());
 		Integer cnt = 0;
 		for(Map.Entry<Integer, List<clsIntersection>> c : traceToIntersection.entrySet()){			
-			cnt += splitAtIndexAndAddPoint(t.get(c.getKey()), c.getValue(), vId);
+			cnt += splitAtIndexAndAddPoint(t.get(c.getKey()), c.getValue());
 		}
-		Debug.syso("Die Spuren wurden geteit an " + cnt + " Stellen geteilt.");
-		
-		
-		
-		return intersections;
-		
+		Debug.syso("Die Spuren wurden geteit an " + cnt + " Stellen geteilt.");	
 	}
 	
 	/**
@@ -156,7 +162,7 @@ public class FindTraceIntersections {
 	 * @param vId Die Versions für die neuen Subtraces
 	 * @return Anzahl der Spurtrenung die durch geführt wurden
 	 */
-	public static int splitAtIndexAndAddPoint(Trace t, List<clsIntersection> splitPoints, int vId){
+	public  int splitAtIndexAndAddPoint(Trace t, List<clsIntersection> splitPoints){
 		//Die Kreuzende Punkte müssen geordnet werden
 		Collections.sort(splitPoints);
 		//Neuen Subtrace anlegen (es kann ggf. ein Subtrace erzeugt werden, obwohl keine veränderung vorliegt)
@@ -201,7 +207,7 @@ public class FindTraceIntersections {
 	 * @param p2Index
 	 * @return
 	 */
-	private static boolean isEdgeIntersectEdge(List<Box> intersections, Trace t1, Trace t2, int p1Index, int p2Index){
+	private  boolean isEdgeIntersectEdge(Trace t1, Trace t2, int p1Index, int p2Index){
 		double[] coordiants = new double[2];
 		//Überschneiden die beiden Kanten sich überhaupt?
 		int isIntersect = Geometry.findLineSegmentIntersection(t1.get(p1Index).getLon(), t1.get(p1Index).getLat(), t1.get(p1Index+1).getLon(), t1.get(p1Index+1).getLat(), 
@@ -224,42 +230,32 @@ public class FindTraceIntersections {
 	 * 
 	 * @param intersections
 	 * @param noOfIteration
-	 * @return
 	 */
-	public static List<Box> findMinimalBoundindBoxes(List<Box> intersections, int noOfIteration){
-		Debug.syso("Init. RTree.");
-		final Logger rootLogger = Logger.getRootLogger();
-		rootLogger.setLevel(Level.INFO);
-		rootLogger.addAppender(new ConsoleAppender(new PatternLayout("%-5p [%t]: %m%n")));
-		SpatialIndex siIntersections = new RTree();
-		
-		Properties p = new Properties();
-		p.setProperty("MinNodeEntries", "10");
-		p.setProperty("MaxNodeEntries", "50");
-		siIntersections.init(p);
-		
+	public void findMinimalBoundindBoxes(){
+		findMinimalBoundindBoxes(noOfIteration);
+	}
+	public void findMinimalBoundindBoxes(int noOfIteration){
 		Debug.syso("Schnittpunkte indecieren");
 		for(int i=0; i < intersections.size(); i++){
 			siIntersections.add(intersections.get(i).rec,i);
 		}
 		
-		return mergBoundingBox(siIntersections, intersections, noOfIteration);
+		mergBoundingBox(noOfIteration);
 	}
-	
 	/**
 	 * 
 	 * @param siIntersections
 	 * @param intersections
 	 * @param noOfIteration
 	 */
-	public static List<Box> mergBoundingBox(SpatialIndex siIntersections, List<Box> intersections, int noOfIteration){
+	private void mergBoundingBox(int noOfIteration){
 		if(noOfIteration == 0)
-			return intersections;
+			return;
 		
 		Debug.syso("Berechne Anzahl der Nachbarschaften.");
 		List<PTIntProcedure> procList = new ArrayList<PTIntProcedure>();
 		for(int i=0; i < intersections.size(); i++){
-			findNeighbours(siIntersections, intersections, procList, intersections.get(i));
+			findNeighbours(procList, intersections.get(i));
 		}
 		
 		Debug.syso("Füge benachbarte Bounding Boxen zusammen.");
@@ -274,7 +270,7 @@ public class FindTraceIntersections {
 			if(!a.isOverlapping){
 				for(Integer intersectionsId : proc.getNearestNeighbours()){
 					b = intersections.get(intersectionsId);
-					mergBox(siIntersections, i, intersectionsId, a, b);
+					mergBox(i, intersectionsId, a, b);
 				}
 			}
 		}
@@ -288,7 +284,7 @@ public class FindTraceIntersections {
 		}
 		Debug.syso("Boxen("+isO+","+isNO+")");
 		
-		return mergBoundingBox(siIntersections, intersections, --noOfIteration);
+		mergBoundingBox(--noOfIteration);
 	}
 	/**
 	 * 
@@ -297,7 +293,7 @@ public class FindTraceIntersections {
 	 * @param procList
 	 * @param b
 	 */
-	public static void findNeighbours(SpatialIndex siIntersections, List<Box> intersections, List<PTIntProcedure> procList, Box b){
+	private void findNeighbours(List<PTIntProcedure> procList, Box b){
 		PTIntProcedure proc = new PTIntProcedure(b.pt);
 		procList.add(proc);			
 		siIntersections.nearest(b.rec.centre(), proc, b.getRedius());
@@ -311,7 +307,7 @@ public class FindTraceIntersections {
 	 * @param b
 	 * @param noRec
 	 */
-	private static boolean mergBox(SpatialIndex siIntersections, int i, int intersectionsId, Box a, Box b){
+	private boolean mergBox(int i, int intersectionsId, Box a, Box b){
 		if(!b.isOverlapping && i != intersectionsId){ 
 			if(a.rec.intersects(b.rec) || a.rec.containedBy(b.rec) || a.rec.contains(b.rec) ){
 				//Lösche die beiden alten Einträge ausm Index
@@ -336,7 +332,7 @@ public class FindTraceIntersections {
 	 * zur Verfügung.
 	 * @author Simon Könnecke
 	 */
-	static class clsIntersection implements Comparable<clsIntersection>{
+	 class clsIntersection implements Comparable<clsIntersection>{
 		public Box box;
 		public Integer index;
 		public Integer traceId;
@@ -380,17 +376,13 @@ public class FindTraceIntersections {
 		
 	}
 	
-	public static void killDouble(){
-		
-	}
-	
 	/**
 	 * Eine Datenstruktur für Kreuzende Kanten.
 	 * Der Begriff Box wird hier verwendet, wegen der minimalen Bounding Box.
 	 * Die Punkte werden als Kreise verstanden und sollen nach und nach zusammen geführt werden.
 	 * @author Simon Koennecke
 	 */
-	public static class Box{
+	public class Box{
 		/*
 		 * Diese Attribute sollen helfen Kreuzungen zu erkennen.
 		 */
@@ -450,6 +442,10 @@ public class FindTraceIntersections {
 		
 		
 	}
-	
+
+
+	public List<Box> getIntersections() {
+		return intersections;
+	}
 	
 }

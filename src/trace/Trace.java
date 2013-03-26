@@ -1,5 +1,6 @@
 package trace;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -93,9 +94,12 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 	
 	public double getDistance(){
 		double d = 0;
+		if(size() < 2){
+			return d;
+		}
 		Point p = trace.get(0);
 		for(Point pt : this){
-			d += PtOpPlane.distance(p, pt);
+			d += PtOpSphere.distance(p, pt);
 			p = pt;
 		}		
 		return d;
@@ -160,7 +164,9 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 	}
 	
 	public String toString(){
-		return "Trace (" + vId + " , " + subTraces.size() + ", " + trace.size() + ")";
+		final DecimalFormat df =   new DecimalFormat  ( "###0.00" );
+		final DecimalFormat d =   new DecimalFormat  ( "000" );
+		return "Trace (" + d.format(vId) + " , " + d.format(subTraces.size()) + ", " + d.format(trace.size()) + ", " +  df.format(getDistance())  + ")";
 	}
 	
 	public Object clone() throws CloneNotSupportedException {

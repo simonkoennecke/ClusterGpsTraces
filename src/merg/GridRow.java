@@ -17,6 +17,7 @@ public class GridRow {
 		private Trace list;
 		
 		public PointList(){
+			list = new Trace("Für das Grid",-1);
 		}
 		/**
 		 * 
@@ -43,7 +44,9 @@ public class GridRow {
 		
 	}
 	private Map<Integer, PointList> listOfPoints;
-	
+	public GridRow(){
+		listOfPoints = new HashMap<Integer, PointList>();		
+	}
 	public GridRow(Integer iR, Trace t, Point pt){
 		listOfPoints = new HashMap<Integer, PointList>();
 		add(iR, t, pt);

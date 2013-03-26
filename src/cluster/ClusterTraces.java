@@ -4,5 +4,5 @@ public interface ClusterTraces {
 
 	public void run();
 	public Cluster getCluster();
-	public Cluster getClusterFirstIteration();
+	public Clusters getClusters();
 }

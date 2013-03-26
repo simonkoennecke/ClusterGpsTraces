@@ -18,7 +18,10 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 	}
 	
 	public int size(){
-		return traces.size();
+		if(traces == null)
+			return 0;
+		else
+			return traces.size();
 	}
 	public Trace addTrace(){
 		return addTrace("Sub Trace", null);
@@ -85,7 +88,7 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 	private long countDisplayedTraces(Traces traces){
 		long cnt = 0;
 		for(Trace t : traces){
-			if(t.getSubTraces().size() == 0){
+			if(t.getSubTraces().size() == 0 && t.size() >= 2){
 				cnt += 1;
 			}
 			else{

@@ -103,20 +103,25 @@ public class GridGraph{
 		int c=0;
 		for(int i=0; i < grid.getRowNo(); i++){
 			for(int j=0; j < grid.getColumnNo(); j++){
-				if(grid.getRow(i).get(j).size() > (stdvar*3)){
-					c=0;				
+				try{
+					if(grid.getRow(i).get(j).size() > (stdvar*3)){
+						c=0;				
+					}
+					else if(grid.getRow(i).get(j).size() > (stdvar*2)){
+						c=1;					
+					}
+					else if(grid.getRow(i).get(j).size() > (stdvar*1)){
+						c=2;					
+					}
+					else if(grid.getRow(i).get(j).size() > (stdvar*0.5)){
+						c=3;					
+					}
+					else{
+						c=4;					
+					}
 				}
-				else if(grid.getRow(i).get(j).size() > (stdvar*2)){
-					c=1;					
-				}
-				else if(grid.getRow(i).get(j).size() > (stdvar*1)){
-					c=2;					
-				}
-				else if(grid.getRow(i).get(j).size() > (stdvar*0.5)){
-					c=3;					
-				}
-				else{
-					c=4;					
+				catch (Exception e) {
+					c=4;
 				}
 				if(grid.getRow(i).get(j).size() == l[l.length-1])
 					g.fill(g.color(255,0,255,255));				

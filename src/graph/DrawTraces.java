@@ -73,6 +73,9 @@ public class DrawTraces {
 	}
 	public void draw(Traces traces){
 		//Alle Spuren zeichnen
+		if(traces == null)
+			return;
+		
 		for(Trace t : traces){		  
 			if(t.getSubTraces().size()>0){
 				this.draw(t.getSubTraces());
@@ -108,12 +111,13 @@ public class DrawTraces {
 			Point p1 = t.get(0);
 			Point pn = t.get(t.size()-1);
 			int boxSize = 3;
+			g.rectMode(g.CENTER);
 			g.stroke(g.color(0,0,0,255));
 			g.fill(g.color(255,0,0));
 			g.rect(g.lon(p1), g.lat(p1), boxSize, boxSize);
 			g.fill(g.color(0,255,0));
 			g.rect(g.lon(pn), g.lat(pn), boxSize, boxSize);
-			
+			g.rectMode(g.CORNER);
 		}
 	}
 	public boolean isPaintTraces() {
