@@ -13,28 +13,37 @@ import trace.*;
  */
 public class GpxFile {
 	private Traces traces;
+	public String filename;
 	
+	/**
+	 * Load File from Hard Drive
+	 * @param file Path to file
+	 */
 	public GpxFile(String file){		
-		  try {
-			  GpxLoader l = new GpxLoader(file);
-			  traces = l.getTraces();
-		  } catch (Exception e) {
-			  Debug.syso("Die GPX Datei konnte nicht eingelesen werden.");
-		  }		  
-		  Debug.syso("Number of Traces: " + traces.size() + "");		  
+		  this(file,false);	  
 	}
+	/**
+	 * Lade GPX Datei vom jar
+	 * @param file Path in Jar-File
+	 * @param loadLocal 
+	 */
 	public GpxFile(String file, boolean loadLocal){		
 		  try {
+			  filename = file;
+			  if (filename.contains("\\")) {
+			      filename = filename.substring(filename.lastIndexOf("\\"), filename.length());			      
+			  }
+			  if(filename == "")
+				  filename = file;
 			  GpxLoader l = new GpxLoader(file, loadLocal);
 			  traces = l.getTraces();
 		  } catch (XMLStreamException e) {
 			  Debug.syso("Die GPX Datei konnte nicht eingelesen werden.");
-		  }		  
-		  Debug.syso("Number of Traces: " + traces.size() + "");		  
+		  }
+		  Debug.syso("File Name=" + filename);
+		  Debug.syso("Number of Traces: " + traces.countDisplayedTraces() + "");		  
 	}
 	public GpxFile(){
-		//this("C:\\Users\\Simon\\workspace\\ClusterGpsTraces\\GpxFiles\\test04.gpx");
-		//this("C:\\Users\\Simon\\workspace\\ClusterGpsTraces\\GpxFiles\\berlin.gpx");
 		this("/berlin.gpx", true);
 	}
 	

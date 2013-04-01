@@ -55,6 +55,8 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 	
 	private JMenuBar menuBar;
 	private JMenu menuCluster;
+	private FormClusterAnalyse formClusterAnalyse = new FormClusterAnalyse();
+	private FormTracesAnalyse formTracesAnalyse;
 	
 	  // constructor
 	public ControlPanel(JFrame _jf, GpxFile _gpx) {
@@ -84,16 +86,16 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 	    
 	    ImageIcon icon = null;
 		
-        tabbedPanel.addTab("Map", icon, graph, "Does nothing");
+        tabbedPanel.addTab("Map", graph);
         tabbedPanel.setMnemonicAt(0, KeyEvent.VK_1);
         
         
         tabPanel[0] = makeTextPanel("Panel #2");
-        tabbedPanel.addTab("Distribution", icon, tabPanel[0], "Does twice as much nothing");
+        formTracesAnalyse = new FormTracesAnalyse(gpx);
+        tabbedPanel.addTab("Traces", new JScrollPane(formTracesAnalyse));
         tabbedPanel.setMnemonicAt(1, KeyEvent.VK_2);
-         
-        tabPanel[1] = makeTextPanel("Panel #3");
-        tabbedPanel.addTab("Tab 3", icon, tabPanel[1], "Still does nothing");
+        
+        tabbedPanel.addTab("Cluster", formClusterAnalyse);
         tabbedPanel.setMnemonicAt(2, KeyEvent.VK_3);
          
         tabPanel[2] = makeTextPanel("Panel #4 (has a preferred size of 410 x 50).");
@@ -284,7 +286,7 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 	private void createMenuCluster(){
 		menuCluster  = new JMenu("Cluster");
 		JMenuItem item;
-		createTxtField(menuCluster, 10, "Anzahl der Iteration", "5");
+		createTxtField(menuCluster, 10, "Anzahl der Iteration", "20");
 		item = new JMenuItem("Cluster berechnen");
         item.setActionCommand("clusterTraces");
         item.addActionListener(this);
@@ -295,8 +297,8 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         item.setActionCommand("clusterTracesGrid");
         item.addActionListener(this);
         menuCluster.add(item);
-        createTxtField(menuCluster, 8, "Zeile", "5");
-        createTxtField(menuCluster, 9, "Spalte", "5");
+        createTxtField(menuCluster, 8, "Spalte", "6");
+        createTxtField(menuCluster, 9, "Zeile", "5");
         
         
         item = new JMenuItem("Cluster anzeigen/verbergen");
@@ -376,6 +378,8 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 		return top;
 	}
 	private void createNodes(DefaultMutableTreeNode top, Traces traces){
+		if(traces == null)
+			return;
 	     for(Trace t : traces){
 	    	if(t.getSubTraces().size() > 0){
 	    		DefaultMutableTreeNode cat = new DefaultMutableTreeNode(t);
@@ -397,10 +401,18 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 		tree.setVisible(true);
 		//tree.setViewportView(taskDataTree);		
 	}
-	
+	public void repaint(){
+		try{
+			reloadTree();
+			graph.redraw();
+			formTracesAnalyse.repaint();
+		}
+		catch (Exception e) {
+			// TODO: handle exception
+		}
+	}
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
-		// TODO Auto-generated method stub
 		String actionCommand = arg0.getActionCommand();
 		long cntDispTraces = gpx.getTraces().countDisplayedTraces();
 		long cntDispPoints = gpx.getTraces().countPoints();
@@ -461,51 +473,44 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 			double tol = Double.valueOf(txtFields[3].getText());
 			TrcOp.reduction(gpx.getTraces(), tol);
 			Debug.syso("Reduce Points on Traces");
-			reloadTree();
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "splitTraceByDouglasPeucker"){
 			double tol = Double.valueOf(txtFields[4].getText());
 			TrcOp.splitTraceByDouglasPeucker(gpx.getTraces(), tol);
 			Debug.syso("Splite Trace with Douglas Peucker");
-			reloadTree();
-			graph.redraw();
+			repaint();
 		}			
 		else if(actionCommand == "resizePlain"){
 			double tol = Double.valueOf(txtFields[0].getText());
 			TrcOp.resizePlain(gpx.getTraces(), tol);
 			Debug.syso("Resize Plain");
-			reloadTree();
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "cutTraceByDistance"){
 			double tol = Double.valueOf(txtFields[1].getText());
 			TrcOp.splitTraceByDistance(gpx.getTraces(), tol);
 			Debug.syso("Cut Trace by Distance");
-			reloadTree();
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "splitTraceAfterDistance"){
 			double tol = Double.valueOf(txtFields[2].getText());
 			TrcOp.splitTraceAfterDistance(gpx.getTraces(), tol);
 			Debug.syso("Split Trace after Distance");
-			reloadTree();
-			graph.redraw();
+			repaint();
 		}			
 		else if(actionCommand == "splitByIntersection"){
 			//double tol = Double.valueOf(txtFields[5].getText());
 			int no = Integer.valueOf(txtFields[7].getText());
 			graph.setIntersections(TrcOp.getIntersections(gpx.getTraces(), 0.0015, no));
-			reloadTree();
-			graph.redraw();
+			repaint();
 	        Debug.syso("Repaint");
 		}else if(actionCommand == "deleteTraceWithADistancLess"){
 			
 			double tol = Double.valueOf(txtFields[12].getText());
 			Debug.syso("Delete Trace with a distance less than " + tol);
 			TrcOp.deleteTraceWithADistancLess(gpx.getTraces(), tol);
-			reloadTree();
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "clusterTraces"){
 			Debug.syso("Cluster");
@@ -515,12 +520,12 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 			ClusterTraces cltr = new KMeans(k, tmp, no);
 			cltr.run();
 			graph.getDrawCluster().setClusters(cltr.getClusters());
-			
+			formClusterAnalyse.setClusters(cltr.getClusters());
 			
 			graph.setPaintMode(MainGraph.paintModeOption.Cluster);
 			//Config JMenuBar
 			setClusterCheckbox();
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "clusterTracesGrid"){
 			Debug.syso("Cluster");
@@ -531,24 +536,24 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 			ClusterTraces cltr = new KMeans(r, c, tmp, no);
 			cltr.run();
 			graph.getDrawCluster().setClusters(cltr.getClusters());
+			formClusterAnalyse.setClusters(cltr.getClusters());
 			graph.getDrawCluster().setPaintIteration((no)-1);
 			txtFields[11].setText(String.valueOf(no));
 			graph.setPaintMode(MainGraph.paintModeOption.Cluster);
 			//Config JMenuBar
 			setClusterCheckbox();
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "tracesTogrid"){
 			Debug.syso("Trace to Grid");
 			int k = Integer.valueOf(txtFields[5].getText());
 			graph.setGrid(new Grid(gpx.getTraces(), k));				
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "redo"){
 			Debug.syso("Redo");				
 			TrcOp.redo(gpx);
-			reloadTree();
-			graph.redraw();
+			repaint();
 		}
 		else if(actionCommand == "toggleIntersectionDisplay"){
 			Debug.syso("Toggle Intersection Display");

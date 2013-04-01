@@ -56,7 +56,9 @@ public class TrcOp {
 			dist = t.getDistance();
 			if(dist < distTol){
 				//Lege einen Subtrace ohne Punkte an, somit geht der redo button noch
-				t.addSubTraces(vId);
+				Trace tmpTrace = t.addSubTraces(vId);
+				//Sonst läuft das Berechnen von den extremen etwas schief...
+				tmpTrace.addPoint(t.get(0));
 			}
 		}
 	}

@@ -69,13 +69,16 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 	}
 	
 	public long countPoints(){
-		return countPoints(this);
+		return countPoints(this, Trace.getCurrentVersionId());
 	}
-	public long countPoints(Traces traces){
+	public long countPoints(int vId){
+		return countPoints(this, vId);
+	}
+	public long countPoints(Traces traces, int vId){
 		int cnt=0;
 		for(Trace t : traces){
-			if(t.getSubTraces().size() > 0){
-				cnt += countPoints(t.getSubTraces());
+			if(t.getSubTraces().size() > 0 && t.getVersionId() < vId){
+				cnt += countPoints(t.getSubTraces(), vId);
 				continue;
 			}
 			cnt += t.size();
@@ -83,20 +86,53 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 		return cnt;
 	}
 	public long countDisplayedTraces(){
-		return countDisplayedTraces(this);
+		return countDisplayedTraces(this, Trace.getCurrentVersionId());
 	}
-	private long countDisplayedTraces(Traces traces){
+	public long countDisplayedTraces(int vId){
+		return countDisplayedTraces(this, vId);
+	}
+	private long countDisplayedTraces(Traces traces, int vId){
 		long cnt = 0;
 		for(Trace t : traces){
-			if(t.getSubTraces().size() == 0 && t.size() >= 2){
+			if(t.getSubTraces().size() == 0 && t.size() >= 2 && t.getVersionId() <= vId){
 				cnt += 1;
 			}
 			else{
-				cnt += countDisplayedTraces(t.getSubTraces());
+				cnt += countDisplayedTraces(t.getSubTraces(), vId);
 			}
 		}
 		return cnt;
 	}
+	
+	public void calcDistanceBetweenPoints(double[] l, int vId){
+		calcDistanceBetweenPoints(this, l, 0, vId);
+	}
+	public void  calcDistanceBetweenPoints(Traces traces, double[] l, int index, int vId){
+		for(Trace t : traces){
+			if(t.getSubTraces().size() > 0 && t.getVersionId() < vId){
+				calcDistanceBetweenPoints(t.getSubTraces(), l, index, vId);
+				continue;
+			}
+			for(int i = 1; i < t.size(); i++){
+				l[index++] = PtOpSphere.distance(t.get(i-1), t.get(i));
+			}
+		}
+	}
+	
+	public void calcTraceLength(double[] l, int vId){
+		calcTraceLength(this, l, 0, vId);
+	}
+	public void  calcTraceLength(Traces traces, double[] l, int index, int vId){
+		for(Trace t : traces){
+			if(t.getSubTraces().size() > 0 && t.getVersionId() < vId){
+				calcTraceLength(t.getSubTraces(), l, index, vId);
+				continue;
+			}
+			if(t.size() > 1)
+				l[index++] = t.getDistance();
+		}
+	}
+	
 	public String toString(){
 		return "Traces (" + traces.size() + ")";
 	}

@@ -97,10 +97,8 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 		if(size() < 2){
 			return d;
 		}
-		Point p = trace.get(0);
-		for(Point pt : this){
-			d += PtOpSphere.distance(p, pt);
-			p = pt;
+		for(int i=1; i < trace.size(); i++){
+			d += PtOpSphere.distance(trace.get(i-1), trace.get(i));	
 		}		
 		return d;
 	}
@@ -189,6 +187,9 @@ public class Trace extends IterInterface<Point> implements Iterable<Point>, Clon
 	}
 	public static Integer getDecrementVersionId(){
 		return vIdMgnt.getAndDecrement();
+	}
+	public static Integer getCurrentVersionId(){
+		return vIdMgnt.get();
 	}
 
 	public Point2D[] getPoints() {
