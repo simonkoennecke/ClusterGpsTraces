@@ -1,7 +1,10 @@
 package cluster;
 
+import java.util.ArrayList;
 import java.util.EmptyStackException;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 
@@ -26,6 +29,20 @@ public class EpsilonTable {
 		}
 		public void put(Integer key, Double value){
 			row.put(key, value);
+		}
+		public List<Double> getList(){
+			List<Double> rtn = new LinkedList<Double>();
+			for(Map.Entry<Integer, Double> entry : row.entrySet()){
+				rtn.add(entry.getValue());
+			}
+			return rtn;
+		}
+		public List<Integer> getTraceIdsList(){
+			List<Integer> rtn = new ArrayList<Integer>();
+			for(Map.Entry<Integer, Double> entry : row.entrySet()){
+				rtn.add(entry.getKey());
+			}
+			return rtn;
 		}
 	}
 	
@@ -61,13 +78,56 @@ public class EpsilonTable {
 		s.release();
 		return e;
 	}
+	public List<Double> get(Integer clusterId){
+		s.acquireUninterruptibly();
+		List<Double> list;
+		try{
+			list = table.get(clusterId).getList();
+		}
+		catch(NullPointerException exception){
+			list = new LinkedList<Double>();
+		}
+		s.release();
+		return list;
+	}
+	public List<Integer> getTraceIds(Integer clusterId){
+		s.acquireUninterruptibly();
+		List<Integer> list;
+		try{
+			list = table.get(clusterId).getTraceIdsList();
+		}
+		catch(NullPointerException exception){
+			list = new LinkedList<Integer>();
+		}
+		s.release();
+		return list;
+	}
 }
 
+/**
+ * Diese Klasse wird verwendet, um alle Fréchet Distanzen parallel zu berechnen.
+ * @author Simon Könnecke
+ */
 class calcEpsilonTable implements Runnable{
+	/**
+	 * Die Datenstruktur zum Abspeichern des berechneten Wert
+	 */
 	private EpsilonTable tbl;
+	/**
+	 * Alle Spuren die verglichen werden sollen mit den Centroiden
+	 */
 	private Traces t;
+	/**
+	 * Alle Centroide in der Datenstruktur Traces
+	 */
 	private Traces centroid;
+	/**
+	 * Die alle Paare von Spur und Centroid die Berechnet werden sollen in der Datenstruktur als Stack
+	 */
 	private AtomicStack toCalc;
+	/**
+	 * Die Threas ID
+	 */
 	private int threadId;
 	
 	public calcEpsilonTable(int threadId, Traces t, Traces centroid, EpsilonTable tbl, AtomicStack toCalc){
@@ -80,11 +140,15 @@ class calcEpsilonTable implements Runnable{
 	@Override
 	public void run() {
 		TraceCompare tCmp = new FrechetDistance();
+		//Arbeite alle Aufträge aufm Stack ab
 		while(!toCalc.empty()){
 			try{
+				//Lade welcher Centroid und Spur berechnet werden soll
 				int[] ids = toCalc.pop();//0 = centroidId, 1 = traceId
+				//Berechne die Frechet-Distanz
+				//Achtung die Spur muss vorher die Punkte in einen Point2D Array geladen worden sein
 				double e = tCmp.compareTo(centroid.get(ids[0]), t.get(ids[1]));
-				//System.out.println("Thread "+threadId +": Centroid " + ids[0] + " und Trace " + ids[1] + " hat ein Epsilon von " + e);
+				//Speicher den Wert in die Tabelle
 				tbl.put(ids[0], ids[1], e);
 			}
 			catch(EmptyStackException e){

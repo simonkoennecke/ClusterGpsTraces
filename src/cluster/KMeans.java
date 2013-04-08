@@ -1,12 +1,19 @@
 package cluster;
 
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EmptyStackException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+
+import javax.swing.event.ListSelectionEvent;
 
 import core.Debug;
 
@@ -91,6 +98,7 @@ public class KMeans implements ClusterTraces {
 			generateCentorid();
 		Debug.syso("//2. Schritt: Berechne die Fréchet-Distance von allen Traces zu den Centroiden");
 		EpsilonTable tbl = new EpsilonTable();
+		clusters.eplisonTable.add(tbl);
 		AtomicStack stack = new AtomicStack();
 		Integer centroidId = 0;
 		boolean isCentroid=false;
@@ -131,9 +139,9 @@ public class KMeans implements ClusterTraces {
 			}
 		}
 		Debug.syso("//3. Schritt: Die Centroid berechnen anhand der gegeben Clusterverteilung.");
-		
+		noOfClusterIteration++;
 		while(--noOfClusterIteration>0){
-			Debug.syso("//3. Schritt: Iteration " + ( noOfClusterIterationTotal - noOfClusterIteration) + "/" + noOfClusterIterationTotal);
+			Debug.syso("//3. Schritt: Iteration " + (( noOfClusterIterationTotal - noOfClusterIteration)+1) + "/" + noOfClusterIterationTotal);
 			cluster = clusters.list.get(clusters.list.size()-1);
 			cluster2 = new Cluster(k);
 			clusters.list.add(cluster2);
@@ -196,8 +204,32 @@ public class KMeans implements ClusterTraces {
 			for(int i=0; i < k; i++){
 				Traces tmp = cluster2.getTraces(i);
 				if(tmp != null){
-					System.out.println((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
+					Debug.syso((i+1)+". Cluster mit der Anzahl von Traces " + tmp.size() + " von " + t.size() + "");				
 				}
+			}
+			
+			//Trace Ids
+			int iter = clusters.list.size()-1;
+			//Zähle die Spuren die mit der vorherigen Iteration identisch sind
+			int cntEqualTraces=0;
+			for(int cId=0; cId < k; cId++){
+				List<Trace> l2 = clusters.getAllTraceIdsByClusterId(iter, cId);
+				List<Trace> l1 = clusters.getAllTraceIdsByClusterId(iter-1, cId);
+				if(l2.size() == l1.size()){
+					boolean equal=true;
+					for(Trace t: l1){
+						if(!l2.contains(t))
+							equal = false;
+							
+					}
+					if(equal){
+						cntEqualTraces++;
+					}
+				}				
+			}
+			if(cntEqualTraces == k){
+				Debug.syso("//--> Abbruch bei der Iteration " + (( noOfClusterIterationTotal - noOfClusterIteration)+1) + " von " + noOfClusterIterationTotal);	
+				break;	
 			}
 		}
 			

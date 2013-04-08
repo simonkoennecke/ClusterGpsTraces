@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import trace.Trace;
@@ -76,4 +77,13 @@ public class Cluster implements Iterable<Traces>{
 	public void setSize(int size) {
 		this.size = size;
 	}
+	public List<Trace> getAllTraces(int cId) {
+		Traces t = getTraces(cId);
+		List<Trace> l = new ArrayList<Trace>(t.size());
+		for(Trace tmp : t){
+			l.add(tmp);
+		}
+		return l;
+	}
+	
 }

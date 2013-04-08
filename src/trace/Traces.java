@@ -2,6 +2,8 @@ package trace;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 	private final ArrayList<Trace> traces = new ArrayList<Trace>();
@@ -104,32 +106,41 @@ public class Traces extends IterInterface<Trace> implements Iterable<Trace>  {
 		return cnt;
 	}
 	
-	public void calcDistanceBetweenPoints(double[] l, int vId){
-		calcDistanceBetweenPoints(this, l, 0, vId);
+	public List<Double> calcDistanceBetweenPoints(int vId){
+		List<Double> list = new LinkedList<Double>();
+		calcDistanceBetweenPoints(this, list,vId);
+		return list;
 	}
-	public void  calcDistanceBetweenPoints(Traces traces, double[] l, int index, int vId){
+	public void  calcDistanceBetweenPoints(Traces traces, List<Double>  l, int vId){
 		for(Trace t : traces){
 			if(t.getSubTraces().size() > 0 && t.getVersionId() < vId){
-				calcDistanceBetweenPoints(t.getSubTraces(), l, index, vId);
+				calcDistanceBetweenPoints(t.getSubTraces(), l, vId);
 				continue;
 			}
 			for(int i = 1; i < t.size(); i++){
-				l[index++] = PtOpSphere.distance(t.get(i-1), t.get(i));
+				final double tmp = PtOpSphere.distance(t.get(i-1), t.get(i));
+				if(tmp > 0)
+					l.add(tmp);
 			}
 		}
 	}
 	
-	public void calcTraceLength(double[] l, int vId){
-		calcTraceLength(this, l, 0, vId);
+	public List<Double> calcTraceLength(int vId){
+		List<Double> list = new LinkedList<Double>();
+		calcTraceLength(this, list, vId);
+		return list;
 	}
-	public void  calcTraceLength(Traces traces, double[] l, int index, int vId){
+	public void  calcTraceLength(Traces traces, List<Double> l, int vId){
 		for(Trace t : traces){
 			if(t.getSubTraces().size() > 0 && t.getVersionId() < vId){
-				calcTraceLength(t.getSubTraces(), l, index, vId);
+				calcTraceLength(t.getSubTraces(), l, vId);
 				continue;
 			}
-			if(t.size() > 1)
-				l[index++] = t.getDistance();
+			if(t.size() > 1){
+				final double tmp = t.getDistance();
+				if(tmp > 0)
+					l.add(tmp);
+			}
 		}
 	}
 	

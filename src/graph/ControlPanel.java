@@ -22,6 +22,7 @@ import javax.swing.tree.DefaultTreeModel;
 import merg.Grid;
 
 import cluster.ClusterTraces;
+import cluster.Export;
 import cluster.KMeans;
 
 import com.lowagie.text.ListItem;
@@ -321,6 +322,11 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
         menuCluster.add(item);
         createTxtField(menuCluster, 11, "Nummer:", "4");
         
+        item = new JMenuItem("Clusters export");
+        item.setActionCommand("clusterExport");
+        item.addActionListener(this);
+        menuCluster.add(item);
+        
     	for(int i=0; i < chkList.length; i++){
     		createCheckbox(menuCluster, i, (i+1)+". Cluster");
     	}
@@ -405,7 +411,7 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 		try{
 			reloadTree();
 			graph.redraw();
-			formTracesAnalyse.repaint();
+			//formTracesAnalyse.repaint();
 		}
 		catch (Exception e) {
 			// TODO: handle exception
@@ -469,6 +475,16 @@ public class ControlPanel extends JPanel implements ActionListener, WindowStateL
 			graph.getDrawCluster().saveToFile(dir);
 			        
 		}
+		else if(actionCommand == "clusterExport"){
+			Debug.syso("Export Cluster to GPX File");
+			FileDialog dlg=null;
+			dlg=new FileDialog(jf,"Choose Directoy for the File",FileDialog.SAVE);
+			dlg.setFile("cluster.gpx");
+			dlg.setVisible(true);
+			String dir = dlg.getDirectory() + dlg.getFile();
+			Export.ClustersToGpx(graph.getDrawCluster().getCluster(), dir);
+			        
+		}		
 		else if(actionCommand == "simplifyTraces"){
 			double tol = Double.valueOf(txtFields[3].getText());
 			TrcOp.reduction(gpx.getTraces(), tol);
